@@ -9,6 +9,8 @@ import {
   getWhatsAppQrCode,
   checkWhatsAppNumber,
   getMessageHistory,
+  getWhatsAppGroups,
+  sendWhatsAppGroupMessage,
 } from './whatsapp-web-client';
 
 const router = Router();
@@ -228,6 +230,57 @@ router.get('/message-history', (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Erro ao obter histórico',
+    });
+  }
+});
+
+/**
+ * GET /api/whatsapp/groups
+ * Listar todos os grupos do WhatsApp
+ */
+router.get('/groups', async (req: Request, res: Response) => {
+  try {
+    const groups = await getWhatsAppGroups();
+    res.json({
+      success: true,
+      groups,
+      count: groups.length,
+    });
+  } catch (error) {
+    console.error('[WhatsApp Routes] Erro ao listar grupos:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao listar grupos',
+    });
+  }
+});
+
+/**
+ * POST /api/whatsapp/send-group-message
+ * Enviar mensagem para um grupo
+ */
+router.post('/send-group-message', async (req: Request, res: Response) => {
+  try {
+    const { groupId, text } = req.body;
+
+    if (!groupId || !text) {
+      return res.status(400).json({
+        success: false,
+        error: 'groupId e text são obrigatórios',
+      });
+    }
+
+    const sent = await sendWhatsAppGroupMessage(groupId, text);
+
+    res.json({
+      success: sent,
+      message: sent ? 'Mensagem enviada com sucesso para o grupo' : 'Falha ao enviar mensagem para o grupo',
+    });
+  } catch (error) {
+    console.error('[WhatsApp Routes] Erro ao enviar mensagem para grupo:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao enviar mensagem para grupo',
     });
   }
 });

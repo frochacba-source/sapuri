@@ -352,3 +352,84 @@ export function getMessageHistory(): MessageHistoryEntry[] {
 export function getWhatsAppClient(): WASocket | null {
   return socket;
 }
+
+/**
+ * Interface para grupos do WhatsApp
+ */
+export interface WhatsAppGroup {
+  id: string;
+  name: string;
+  participantsCount: number;
+}
+
+/**
+ * Listar todos os grupos do WhatsApp
+ */
+export async function getWhatsAppGroups(): Promise<WhatsAppGroup[]> {
+  if (!socket || connectionStatus !== "connected") {
+    console.log("[WhatsApp] Não conectado, não é possível listar grupos");
+    return [];
+  }
+
+  try {
+    console.log("[WhatsApp] Buscando grupos...");
+    const groups = await socket.groupFetchAllParticipating();
+    
+    const groupList: WhatsAppGroup[] = Object.values(groups).map((group: any) => ({
+      id: group.id,
+      name: group.subject || "Sem nome",
+      participantsCount: group.participants?.length || 0,
+    }));
+
+    console.log(`[WhatsApp] Encontrados ${groupList.length} grupos`);
+    return groupList;
+  } catch (error) {
+    console.error("[WhatsApp] Erro ao listar grupos:", error);
+    return [];
+  }
+}
+
+/**
+ * Enviar mensagem para um grupo
+ */
+export async function sendWhatsAppGroupMessage(
+  groupId: string,
+  text: string
+): Promise<boolean> {
+  if (!socket || connectionStatus !== "connected") {
+    console.log("[WhatsApp] Não conectado, não é possível enviar mensagem");
+    return false;
+  }
+
+  try {
+    // O ID do grupo já vem no formato correto (xxxxx@g.us)
+    const jid = groupId.includes("@") ? groupId : `${groupId}@g.us`;
+    console.log(`[WhatsApp] Enviando mensagem para grupo ${jid}`);
+
+    await socket.sendMessage(jid, { text });
+
+    // Adicionar ao histórico
+    messageHistory.push({
+      id: Date.now().toString(),
+      phoneNumber: groupId,
+      message: text,
+      status: "sent",
+      timestamp: new Date(),
+    });
+
+    console.log(`[WhatsApp] Mensagem enviada com sucesso para grupo ${groupId}`);
+    return true;
+  } catch (error) {
+    console.error("[WhatsApp] Erro ao enviar mensagem para grupo:", error);
+    
+    messageHistory.push({
+      id: Date.now().toString(),
+      phoneNumber: groupId,
+      message: text,
+      status: "failed",
+      timestamp: new Date(),
+    });
+    
+    return false;
+  }
+}
