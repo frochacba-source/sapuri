@@ -42,8 +42,11 @@ async function startServer() {
   // Serve static files from uploads directory
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
   
-  // API routes for Painel de Contas
-  app.use('/api', accountsRoutes);
+  // API routes for Painel de Contas (ANTES do tRPC e Vite)
+  app.use('/api', (req, res, next) => {
+    console.log(`[API] ${req.method} ${req.url}`);
+    next();
+  }, accountsRoutes);
   
   // Telegram webhook
   registerTelegramWebhook(app);
