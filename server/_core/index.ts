@@ -11,6 +11,7 @@ import { registerTelegramWebhook } from "./botWebhook";
 import { initializeBotHealthCheck } from "./botHealthCheck";
 import { startAutoSave } from "../autoSave";
 import accountsRoutes from "../accountsRoutes";
+import whatsappRoutes from "../whatsapp-routes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -47,6 +48,9 @@ async function startServer() {
     console.log(`[API] ${req.method} ${req.url}`);
     next();
   }, accountsRoutes);
+  
+  // API routes for WhatsApp
+  app.use('/api/whatsapp', whatsappRoutes);
   
   // Telegram webhook
   registerTelegramWebhook(app);
@@ -100,8 +104,8 @@ async function startServer() {
       console.warn('[Backup] Sistema de backup não disponível');
     }
     
-    // WhatsApp DESATIVADO - não funcional
-    console.log('[WhatsApp] ℹ️ Integração WhatsApp desativada');
+    // WhatsApp ATIVADO - Baileys
+    console.log('[WhatsApp] ✅ Integração WhatsApp ativa via Baileys');
   });
 }
 

@@ -33,8 +33,8 @@ router.get('/status', (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/whatsapp/qrcode
- * Obter QR Code em formato base64 ou texto
+ * GET /api/whatsapp/qr-code
+ * Obter QR Code em formato base64
  */
 router.get('/qr-code', (req: Request, res: Response) => {
   try {
