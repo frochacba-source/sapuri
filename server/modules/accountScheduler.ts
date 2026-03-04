@@ -2,6 +2,7 @@ import * as cron from 'node-cron';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import FormData from 'form-data';
 
 interface Account {
   id: string;
@@ -19,8 +20,9 @@ interface SchedulerState {
 }
 
 const ACCOUNTS_FILE = path.join(process.cwd(), 'server/data/contas.json');
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+// Credenciais específicas do Painel de Contas - envia APENAS para o grupo -5156917144
+const TELEGRAM_BOT_TOKEN = process.env.PAINEL_CONTAS_BOT_TOKEN || '8425089071:AAHSyCnG_zOl2_1oKabx2vqib7gl1joFEeY';
+const TELEGRAM_CHAT_ID = process.env.PAINEL_CONTAS_CHAT_ID || '-5156917144';
 
 let schedulerState: SchedulerState = {
   isRunning: false,
@@ -76,23 +78,48 @@ async function sendMessageToTelegram(text: string) {
   }
 }
 
-// Enviar imagem ao Telegram
-async function sendPhotoToTelegram(imageUrl: string, caption?: string) {
+// Enviar imagem ao Telegram (suporta paths locais e URLs)
+async function sendPhotoToTelegram(imagePath: string, caption?: string) {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
     console.error('Telegram credentials not configured');
     return false;
   }
 
   try {
-    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-      chat_id: TELEGRAM_CHAT_ID,
-      photo: imageUrl,
-      caption: caption || '',
-      parse_mode: 'Markdown',
-    });
+    // Se for path local (começa com /uploads/), fazer upload do arquivo
+    if (imagePath.startsWith('/uploads/')) {
+      const fullPath = path.join(process.cwd(), imagePath);
+      
+      if (!fs.existsSync(fullPath)) {
+        console.error(`Arquivo não encontrado: ${fullPath}`);
+        return false;
+      }
+      
+      const formData = new FormData();
+      formData.append('chat_id', TELEGRAM_CHAT_ID);
+      formData.append('photo', fs.createReadStream(fullPath));
+      if (caption) {
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'Markdown');
+      }
+      
+      await axios.post(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`,
+        formData,
+        { headers: formData.getHeaders() }
+      );
+    } else {
+      // Se for URL externa, enviar diretamente
+      await axios.post(`https://i.ytimg.com/vi/UhZtrhV7t3U/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLB7Rlis0ADJRPE85E7RLm94IJc58w`, {
+        chat_id: TELEGRAM_CHAT_ID,
+        photo: imagePath,
+        caption: caption || '',
+        parse_mode: 'Markdown',
+      });
+    }
     return true;
-  } catch (error) {
-    console.error('Erro ao enviar foto ao Telegram:', error);
+  } catch (error: any) {
+    console.error('Erro ao enviar foto ao Telegram:', error?.response?.data || error?.message || error);
     return false;
   }
 }
