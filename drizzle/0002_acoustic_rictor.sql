@@ -1,0 +1,1 @@
+ALTER TABLE `schedules` MODIFY COLUMN `eventDate` varchar(10) NOT NULL;

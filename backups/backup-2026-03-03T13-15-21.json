@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-03-03T13:15:21.248Z",
+  "version": "1.0",
+  "tables": {
+    "gotStrategies": [],
+    "gvgStrategies": [],
+    "members": [],
+    "escalations": [],
+    "gotBattles": [],
+    "gvgBattles": [],
+    "reliquiaBattles": []
+  }
+}

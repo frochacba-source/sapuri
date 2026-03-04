@@ -1,0 +1,4 @@
+id,name,displayName,maxPlayers,eventTime,reminderMinutes,isActive,createdAt
+1,gvg,GvG,20,13:00,30,1,2025-12-28 21:26:39
+2,got,GoT,25,13:00,30,1,2025-12-28 21:26:39
+3,reliquias,Relíquias,40,15:00,30,1,2025-12-28 21:26:39

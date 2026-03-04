@@ -1,0 +1,1 @@
+ALTER TABLE `gvgStrategies` DROP COLUMN `observation`;

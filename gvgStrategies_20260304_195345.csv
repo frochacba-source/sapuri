@@ -1,0 +1,96 @@
+id,name,attackFormation1,attackFormation2,attackFormation3,attackFormation4,attackFormation5,defenseFormation1,defenseFormation2,defenseFormation3,defenseFormation4,defenseFormation5,usageCount,createdBy,createdAt,updatedAt
+1,Explosivo ,SeiyaD,ShunV,Aiacos,Kaiser,Seiya Sagitario,Ikki,SeiyaD,Taça (Suikyo),Hades,ShunD,0,1,2026-01-26 04:07:44,2026-02-03 21:50:21
+90001,Explosivo,Kaiser,Aiacos,ShunV,Seiya Sagitario,Poseidon,Hades,MuD,ShunD,Odysseus,MiloD,0,1,2026-01-29 14:16:12,2026-02-03 18:52:15
+120001,Meta,Ikki,Taça (Suikyo),ShunD,CamusD,Hades,Ikki,Hypnos,Taça (Suikyo),Hades,ShunD,0,1,2026-02-02 16:55:28,2026-02-03 21:50:21
+120002,Meta,Ikki,Taça (Suikyo),CamusD,ShunD,Hades,ShiryuD,Deusa da Guerra (Atena),HyogaD,ShunD,Ikki,0,1,2026-02-02 17:00:16,2026-02-03 21:50:20
+120003,Milo,Hades,Ikki,CamusD,MuD,MiloD,Ikki,ShiryuD,ShunD,Poseidon,Hades,0,1,2026-02-02 17:06:48,2026-02-02 17:06:48
+120004,Alternativo,Kaiser,SeiyaD,ShunV,Seiya Sagitario,ShuraD,Ox,CamusD,Hades,ShunD,MuD,0,1,2026-02-02 17:07:50,2026-02-02 17:07:50
+120005,x,Hades,Ikki,CamusD,Hypnos,MuD,ShiryuD,Deusa da Guerra (Atena),Poseidon,ShunD,HyogaD,0,1,2026-02-02 17:08:55,2026-02-03 21:50:20
+120006,Gelo,Ox,CamusD,Poseidon,HyogaD,MuD,ShiryuD,Ikki,HyogaD,ShunD,SeiyaD,0,1,2026-02-02 17:10:05,2026-02-02 17:10:05
+120007,x,Taça (Suikyo),Hypnos,ShunD,Ikki,Hades,Hypnos,Ikki,ShunD,Taça (Suikyo),Hades,0,1,2026-02-02 17:10:51,2026-02-03 21:50:21
+120008,x,Ikki,CamusD,Hades,ShunD,MuD,Ikki,Hades,SeiyaD,Poseidon,ShunD,0,1,2026-02-02 17:12:06,2026-02-02 17:12:06
+150001,Trevas x Meta,Taça (Suikyo) ,Aiacos,Suikyo (Garruda),Hades,ShunD,Hades,Taça (Suikyo) ,Ikki,ShunD,SeiyaD,0,1,2026-02-04 00:19:16,2026-02-04 00:19:16
+150002,Milo,Suikyo (Garruda) ,Poseidon,Aiacos,ShunD,Hades,Hypnos,MiloD,Hades,Ikki,ShunD,0,1,2026-02-04 00:20:16,2026-02-04 00:20:16
+150003,Alternativo,Ox,Ikki,MiloD,CamusD,MuD,ShiryuD,Hades,CamusD,Hypnos,ShunD,0,1,2026-02-04 00:21:09,2026-02-04 00:21:09
+150004,X,CamusD,Ox,Taça (Suikyo) ,Hades,MuD,Ikki,Hypnos,Hades,ShunD,Taça (Suikyo) ,0,1,2026-02-04 00:21:52,2026-02-04 00:21:52
+150005,Alone,Aiacos,Ikki,ShunD,Alone,Hades,Ikki,Hypnos,Hades,ShunD,Aiacos,0,1,2026-02-04 00:22:47,2026-02-04 00:22:47
+150006,Shijima,Shijima,CamusD,MuD,Seyia Sagitario,MiloD,Taça (Suikyo) ,Ikki,Hades,CamusD,ShunD,0,1,2026-02-04 00:23:59,2026-02-04 00:23:59
+150007,x,Shijima,Deusa da Guerra (Atena),Shaka Arayashiki,Shaka,ShuV,Ikki,Hypnos,ShunD,Hades,CamusD,0,1,2026-02-04 00:25:02,2026-02-04 00:25:02
+150008,x,CamusD,Ox,Hades,MuD,MiloD,Hypnos,CamusD,Ikki,ShunD,Hades,0,1,2026-02-04 00:25:44,2026-02-04 00:25:44
+150009,x,ShiryuD,Ikki,Shijima,ShunD,Seiya Sagitario,Shiryu Ouro,SeiyaD,Shura Ouro,Pandora,Deusa da Guerra (Atena),0,1,2026-02-04 00:26:55,2026-02-04 00:26:55
+150010,x,Shijima,MuD,ShunD,Seiya Sagitario,MiloD,Ikki,Taça (Suikyo) ,Hades,ShunD,SeiyaD,0,1,2026-02-04 00:27:42,2026-02-04 00:27:42
+150011,x,Ox,CamusD,Poseidon,ShunD,HyogaD,Ikki,Taça (Suikyo) ,Hades,SeiyaD,ShunD,0,1,2026-02-04 00:28:20,2026-02-04 00:28:20
+150012,x,MuD,Shijima,Hades,ShunD,MiloD,Hypnos,MiloD,Hades,Ikki,ShunD,0,1,2026-02-04 00:28:56,2026-02-04 00:28:56
+150013,x,Ikki,CamusD,Seiya Sagitario,Artemis,Poseidon,Ikki,Taça (Suikyo) ,Hades,ShunD,SeiyaD,0,1,2026-02-04 00:29:45,2026-02-04 00:29:45
+150014,x,Ikki,Shijima,MiloD,Seiya Sagitario ,MuD,Ikki,Hypnos,ShunD,Hades,Taça (Suikyo) ,0,1,2026-02-04 00:30:43,2026-02-04 00:30:43
+150015,x,Shijima,Shaka Arayashiki,Hades,Seiya Sagitario,Ikki,Kanon,Taça (Suikyo) ,Ikki,ShunD,SeiyaD,0,1,2026-02-04 00:31:47,2026-02-04 00:31:47
+150016,x,Odysseus,MuD,Poseidon,MiloD,ShunD,ShiryuD,Poseidon,ShunD,Ikki,Hades,0,1,2026-02-04 00:32:46,2026-02-04 00:32:46
+150017,x,Ikki,Shijima,Seiya Sagitario,MiloD,Shaka Arayashiki,Ox,Ikki,ShunD,Hades,CamusD,0,1,2026-02-04 00:33:40,2026-02-04 00:33:40
+150018,x,Shijima,CamusD,MuD,Seiya Sagitario,MiloD,Taça (Suikyo) ,Ikki,Hades,CamusD,ShunD,0,1,2026-02-04 00:34:29,2026-02-04 00:34:29
+150019,x,Hypnos,CamusD,Ikki,Hades,ShunD,Ikki,Taça (Suikyo),Hades,ShunD,CamusD,0,1,2026-02-04 00:44:37,2026-02-04 00:44:37
+150020,x,MiloD,Aiacos,Taça (Suikyo),MuD,Artemis,Ikki,Hades,MiloD,CamusD,ShunD,0,1,2026-02-04 00:45:52,2026-02-04 00:45:52
+150021,x,Ox,CamusD,Poseidon,HyogaD,MiloD,Ikki,Taça (Suikyo),Hades,ShunD,Poseidon,0,1,2026-02-04 00:51:10,2026-02-04 00:51:10
+150022,x,SeiyaD,Aiacos,Seiya Sagitario,Kaiser,ShunV,Ikki,Taça (Suikyo),ShunD,Hades,CamusD,0,1,2026-02-04 00:52:18,2026-02-04 00:52:18
+180001,X,Minos,Hades,MuD,MiloD,Seiya Sagitario ,Hades,Shijima,MiloD ,Seiya Sagitario,MuD,0,1,2026-02-04 11:29:52,2026-02-04 11:29:52
+210001,x,Aiacos,Poseidon,Seiya Sagitario,Kaiser,ShunV,Shijima,Hades,MuD,ShunD,MiloD,0,1,2026-02-04 22:23:00,2026-02-04 22:23:00
+210002,x,CamusD,Minos,Hades,MuD,MiloD,Hypnos,CamusD,Hades,MuD,MiloD,0,1,2026-02-04 22:23:45,2026-02-04 22:23:45
+210003,x,ShiryuD,MiloD,Hades,Shijima,ShunD,Hypnos,Ikki,ShunD,Hades,Minos,0,1,2026-02-04 22:24:42,2026-02-04 22:24:42
+210004,x,CamusD,Ox,MuD,Poseidon,Artemis,Hypnos,Hades,Ikki,MuD,CamusD,0,1,2026-02-04 22:25:21,2026-02-04 22:25:21
+210005,x,Hades,Hypnos,Shaka Arayashiki,ShunD,CamusD,Hades,Ikki,ShunD,CamusD,Hypnos,0,1,2026-02-04 22:27:09,2026-02-04 22:27:09
+210006,x,ShiryuD,Ikki,MuD,Odysseus,MiloD,Hypnos,Ikki,ShunD,Hades,CamusD,0,1,2026-02-04 22:27:59,2026-02-04 22:27:59
+210007,x,Hypnos,MuD,CamusD,Hades,MiloD,Hades,CamusD,MiloD,Poseidon,MuD,0,1,2026-02-04 22:29:40,2026-02-04 22:29:40
+210008,x,Ikki,Hecate,ShunD,DohkoD,Artemis,Hypnos,Ikki,ShunD,Hades,CamusD,0,1,2026-02-04 22:32:04,2026-02-04 22:32:04
+210009,x,Aiacos,SeiyaD,Seiya Sagitario,ShunV,Kaiser,Taça (Suikyo),Ikki,ShunD,Hades,Hypnos,0,1,2026-02-04 22:34:24,2026-02-04 22:34:24
+210010,x,Aiacos,Hades,Suikyo (Garruda),Taça (Suikyo),ShunD,Ikki,Hypnos,Shaka Arayashiki,Hades,ShunD,0,1,2026-02-04 22:35:52,2026-02-04 22:35:52
+210011,x,Hades,Minos,MuD,Shijima,MiloD,Ikki,MuD,Hades,ShunD,MiloD,0,1,2026-02-04 22:38:12,2026-02-04 22:38:12
+240001,x,Kaiser,Poseidon,ShunV,Seiya Sagitario,Aiacos,Hades,MiloD,ShunD,CamusD,MuD,0,1,2026-02-04 23:04:02,2026-02-04 23:04:02
+240002,x,Kaiser,Aiacos,SeiyaD,Seiya Sagitario,ShunV,Minos,Hades,Seiya Sagitario,MuD,MiloD,0,1,2026-02-04 23:19:11,2026-02-04 23:19:11
+270001,x,ShunV,Seiya Sagitario,Kaiser,Poseidon,Aiacos,Ox,CamusD,Hades,MiloD,MuD,0,1,2026-02-05 00:31:12,2026-02-05 00:31:12
+270002,x,Hypnos,Minos,Ikki,Hades,ShunD,Ikki,CamusD,Hades,MuD,ShunD,0,1,2026-02-05 00:41:09,2026-02-05 00:41:09
+270003,x,SeiyaD,Aiacos,ShunD,Seiya Sagitario,Kaiser,Ikki,MuD,Hades,ShunD,MiloD,0,1,2026-02-05 00:56:18,2026-02-05 00:56:18
+300001,x,Atena (Mendiga),ShiryuD,Seiya Sagitario,MuD,MiloD,Hades,Ikki,Shijima,ShunD,Poseidon,0,1,2026-02-05 16:55:28,2026-02-05 16:55:28
+300002,x,SeiyaD,Aiacos,Kaiser,Seiya Sagitario,ShunV,Seiya Sagitario,Hades,ShunD,MiloD,MuD,0,1,2026-02-05 16:56:32,2026-02-05 16:56:32
+300003,x,Aiacos,Ox,Hades,CamusD,ShunD,Ikki,Hypnos,ShunD,Hades,CamusD,0,1,2026-02-05 16:58:10,2026-02-05 16:58:10
+300004,x,Ikki,Hades,CamusD,MuD,MiloD,Hypnos,Taça (Suikyo),ShunD,Hades,Ikki,0,1,2026-02-05 16:59:42,2026-02-05 16:59:42
+300005,x,Ox,CamusD,Poseidon,MuD,HyogaD,Deusa da Guerra (Atena),Hades,Poseidon,Ikki,ShunD,0,1,2026-02-05 17:00:36,2026-02-05 17:00:36
+330001,x,Taça (Suikyo),CamusD,Ikki,ShunD,Hades,ShiryuD,Shaka Arayashiki,Hades,CamusD,ShunD,0,1,2026-02-07 00:38:30,2026-02-07 00:38:30
+360001,x,Poseidon,Shaka Arayashiki,Seiya Sagitario,CamusD,Shijima,Hades,Poseidon,MuD,Minos,MiloD,0,1,2026-02-09 15:59:47,2026-02-09 15:59:47
+360002,x,Ikki,Minos,MiloD,MuD,Hades,ShiryuD,Odysseus,Hades,Minos,ShunD,0,1,2026-02-09 16:00:28,2026-02-09 16:00:28
+360003,x,Poseidon,Kaiser,ShunV,SeiyaD,Seiya Sagitario,Odysseus,Hades,MuD,Poseidon,MiloD,0,1,2026-02-09 16:01:11,2026-02-09 16:01:11
+360004,x,Shijima,Shaka Arayashiki,SeiyaD,Seiya Sagitario,Poseidon,Shijima,Odysessus,Poseidon,MuD,MiloD,0,1,2026-02-09 16:02:02,2026-02-09 16:02:02
+360005,x,Ox,CamusD,Hades,MiloD,ShunD,Ikki,Odysseus,Hades,ShunD,Minos,0,1,2026-02-09 16:02:40,2026-02-09 16:02:40
+360006,x,Shijima,MuD,MiloD,Seiya Sagitario,SeiyaD,Mu,Poseidon,Hades,ShunD,Seiya Sagitario,0,1,2026-02-09 16:03:24,2026-02-09 16:03:24
+360007,x,Ikki,Poseidon,Shaka Arayashiki,Shijima,Seiya Sagitario,Shiryu,Poseidon,Hades,Shaka Arayashiki,MuD,0,1,2026-02-09 16:04:28,2026-02-09 16:04:28
+360008,x,Ikki,Poseidon,Shaka Arayashiki,Shijima,Seiya Sagitario,ShiryuD,Poseidon,Hades,Shaka Arayashiki,MuD,0,1,2026-02-09 16:05:20,2026-02-09 16:05:20
+360009,x,Aiacos,SeiyaD,ShunV,Kaiser,Seiya Sagitario,Hades,Poseidon,MuD,Minos,MiloD,0,1,2026-02-09 16:06:16,2026-02-09 16:06:16
+360010,x,Poseidon,Kaiser,ShunV,Seiya Sagitario,SeiyaD,Aiacos,Odysseus,Hades,ShunD,CamusD,0,1,2026-02-09 16:06:56,2026-02-09 16:06:56
+360011,x,Shijima,MuD,ShunD,Hades,MiloD,ShiryuD,MiloD,MInos,Hades,Shijima,0,1,2026-02-09 16:07:38,2026-02-09 16:07:38
+360012,x,Shaka Arayashiki,Shijima,Seiya Sagitario,Artemis,Ikki,Ikki,MiloD,MuD,Hades,CamusD,0,1,2026-02-09 16:08:19,2026-02-09 16:08:19
+360013,x,Shijima,Hades,Seiya Sagitario,MiloD,ShunD,Minos,Ikki,MiloD,Hades,MuD,0,1,2026-02-09 16:08:52,2026-02-09 16:08:52
+360014,x,Shijima,Shaka Arayashiki,Seiya Sagitario,Poseidon,Ikki,Shaka Arayashiki,Hades,Odysseus,MiloD,MuD,0,1,2026-02-09 16:09:40,2026-02-09 16:09:40
+360015,x,Odysseus,CamusD,ShunD,Ox,Hades,ShiryuD,Hades,MuD,Minos ,Shaka Arayashiki,0,1,2026-02-09 16:10:27,2026-02-09 16:10:27
+360016,x,Shijima,MiloD,Seiya Sagitario,MuD,Artemi,ShiryuD,Shijima,Poseidon,MuD,MiloD,0,1,2026-02-09 16:11:04,2026-02-09 16:11:04
+360017,x,MuD,Shijima,Artemis,Seiya Sagitario,MiloD,Pandora,Hades,Mu,Poseidon,MiloD,0,1,2026-02-09 16:11:39,2026-02-09 16:11:39
+360018,x,Shijima,Hades,ShunD,HyogaD,Minos,Shijima,Hades,MuD,Odysseus,MiloD,0,1,2026-02-09 16:13:04,2026-02-09 16:13:04
+360019,x,Shaka Arayashiki,CamusD,Seiya Sagitario,Deusa da Guerra (Atena),MuD,Shijima,Shaka Arayashiki,Poseidon,Seiya Sagitario,Atena (Mendiga),0,1,2026-02-09 16:14:11,2026-02-09 16:14:11
+360020,x,ShiryuD,Poseidon,MuD,Hades,Minos,Shijima,Hades,Poseidon,MuD,MiloD,0,1,2026-02-09 16:14:56,2026-02-09 16:14:56
+360021,x,Hades,Poseidon,MuD,Minos,MiloD,Shijima,Odysseus,MuD,Hades,MiloD,0,1,2026-02-09 16:15:34,2026-02-09 16:15:34
+360022,x,Shijima,Hades,ShunD,Seiya Sagitario,Minos,Shijima,MuD,ShunD,Hades,MiloD,0,1,2026-02-09 16:16:12,2026-02-09 16:16:12
+390001,x,Shijima,Hades,ShunD,Seiya Sagitario,Minos,Shijima,Mu,Shun,Hades,MiloD,0,1,2026-02-09 16:53:40,2026-02-09 16:53:40
+390002,x,ShiryuD,Poseidon,MuD,Hades,MiloD,Hades,Shijima,ShunD,Seiya Sagitario,Ikki,0,1,2026-02-09 16:54:19,2026-02-09 16:54:19
+390003,x,MiloD,MuD,Odysseus,Minos,Hades,CamusD,Ox,Shaka Arayashiki,Hades,ShunD,0,1,2026-02-09 16:56:02,2026-02-09 16:56:02
+390004,x,ShuraD,Poseidon,ShunV,Seiya Sagitario,Kaiser,Ox,MiloD,MuD,Odysseus,CamusD,0,1,2026-02-09 16:56:39,2026-02-09 16:56:39
+390005,x,Kaiser,ShuraD,Aiacos,ShunV,Seiya Sagitario,Shijima,Odysseus,Hades,Seiya Sagitario,MiloD,0,1,2026-02-09 16:57:17,2026-02-09 16:57:17
+390006,x,Minos,Shun Hades,MiloD,Hades,MuD,CamusD,MiloD,MuD,ShunD,Poseidon,0,1,2026-02-09 16:58:11,2026-02-09 16:58:11
+390007,x,ShiryuD,Poseidon,CamusD,ShunD,Kain - Abel,Shijima,Deusa da Guerra (Atena),Shaka Arayashiki,ShunV,Shaka,0,1,2026-02-09 16:59:33,2026-02-09 16:59:33
+390008,x,Odysseus,Hades,Artemis,MiloD,MuD,Ox,Hades,CamusD,ShunD,MiloD,0,1,2026-02-09 17:00:49,2026-02-09 17:00:49
+390009,x,Ox,MiloD,DohkoD,ShunD,Poseidon,Shiryu,Ikki,ShunD,Deusa da Guerra (Atena),HyogaD,0,1,2026-02-09 17:01:43,2026-02-09 17:01:43
+420001,x,Shijima,Odysseus,ShunD,Hades,MiloD,Hypnos,Ikki,ShunD,Hades,Minos,0,1,2026-02-13 01:02:25,2026-02-13 01:02:25
+420002,x,Ox,CamusD,MuD,Poseidon,HyogaD,ShiryuD,CamusD,Hades,MuD,MiloD,0,1,2026-02-13 01:03:36,2026-02-13 01:03:36
+420003,x,Odysseus,Shijima,ShunD,Hades,MiloD,Hypnos,CamusD,MiloD,Hades,MuD,0,1,2026-02-13 01:04:32,2026-02-13 01:04:32
+420004,x,CamusD,Ox,HyogaD,MiloD,MuD,MuD,Ikki,Hades,ShunD,CamusD,0,1,2026-02-13 01:07:37,2026-02-13 01:07:37
+420005,x,ShiryuD,MiloD,MuD,CamusD,Poseidon,Ikki,Hades,MuD,ShunD,MiloD,0,1,2026-02-13 01:09:14,2026-02-13 01:09:14
+420006,x,Hades,ShunD,Ikki,Seiya Sagitario,MuD,Ikki,Hades,CamusD,MiloD,MuD,0,1,2026-02-13 01:10:35,2026-02-13 01:10:35
+420007,x,ShiryuD,Hades,MiloD,Poseidon,MuD,CamusD,Hades,MiloD,ShunD,MuD,0,1,2026-02-13 01:13:42,2026-02-13 01:13:42
+420008,x,Taça (Suikyo),Shiryu Pelado,MuD,Atena (Mendiga),MiloD,Hypnos,Hades,CamusD,MuD,ShunD,0,1,2026-02-13 01:15:40,2026-02-13 01:15:40
+450001,x,Hades,Poseidon,Ikki,MuD,ShunD,Ikki,MiloD,Hades,MuD,CamusD,0,1,2026-02-28 23:51:38,2026-02-28 23:51:38

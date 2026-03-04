@@ -1,0 +1,1 @@
+ALTER TABLE `cards` ADD `bonusVida` varchar(10) DEFAULT '0';

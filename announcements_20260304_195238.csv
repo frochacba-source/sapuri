@@ -1,0 +1,33 @@
+id,eventTypeId,title,message,createdBy,sentAt,isGeneral,createdAt
+1,1,Test Title,Test message,1,2025-12-29 13:02:55,0,2025-12-29 13:02:51
+2,3,Teste,teste,1,2025-12-29 13:08:11,0,2025-12-29 13:08:10
+30001,1,Lembrete de Horário,A batalha começa em breve! Salvem as defesas,1,2025-12-29 14:19:49,0,2025-12-29 14:19:47
+60001,2,Falta Atacar!,"Atenção! Você ainda não atacou na batalha de hoje. Por favor, entre no jogo e faça seus ataques o mais rápido possível! Casa 26",1,2025-12-30 01:06:15,0,2025-12-30 01:06:14
+90001,3,Lembrete Relíquias,Esteja online e preparado as 15:00,1,2025-12-30 11:14:09,0,2025-12-30 11:14:07
+120001,3,Parabéns!,Excelente desempenho na batalha de hoje! Continue assim!,1,2025-12-30 19:33:03,0,2025-12-30 19:33:01
+150001,,Parabéns Pessoal 🎉,Bela Vitória na GVG,1,,1,2025-12-31 01:01:18
+180001,,Feliz Ano Novo🎉,"Que o amor, a paz e a prosperidade estejam presentes em todos os momentos do novo ano.
+
+São os votos da Família Kamui e Sapuri",1,,1,2026-01-01 01:36:49
+210001,,Feliz Ano Novo 🎉,"Pessoal hoje temos 3 competições:
+
+Relíquias 
+GVG 
+GOT 
+
+Precisamos principalmente de foco total nas relíquias.
+
+Att
+
+Team Sapuri",1,,1,2026-01-01 12:29:03
+240001,,Novo Código:,HAPPYNEWYEAR26SSLOJ,1,,1,2026-01-01 15:55:47
+270001,,Relíquias 30 minutos,Foco total nas relíquias,1,,1,2026-01-01 17:44:13
+300001,,Top 30,Parabéns pessoal pela colaboração,1,,1,2026-01-01 19:37:38
+330001,,GOT,Casa 14,1,,1,2026-01-01 22:52:19
+330002,,Primeiro Mapa (Boss Orfeu):Primeiro Mapa (Boss Orfeu):,"Primeiro dia: (835 pontos)
+•	04 casas level 3
+•	06 casas level 2
+
+Segundo dia: (1195 pontos)
+•	04 casas level 3
+•	11 casas level 2",1,,1,2026-02-21 23:40:24
