@@ -193,30 +193,77 @@ function getHelpMessage(): string {
 🤖 *BOT SAPURI - COMANDOS*
 ━━━━━━━━━━━━━━━━━━━━━━━
 
-📋 *Comandos Disponíveis:*
+📋 *Comandos Principais:*
 
-/help ou /ajuda
+/comandos ou /help
 ↳ Lista todos os comandos
 
 /estrategias
-↳ Lista tipos de estratégias disponíveis
-
-/gvg
-↳ Mostra as 5 estratégias GvG mais usadas
-
-/gvg [busca]
-↳ Busca estratégia GvG por nome
-↳ Ex: /gvg cavalaria
-
-/got
-↳ Mostra as 5 estratégias GoT mais usadas
-
-/got [busca]
-↳ Busca estratégia GoT por nome
-↳ Ex: /got defesa forte
+↳ Lista tipos de estratégias
 
 ━━━━━━━━━━━━━━━━━━━━━━━
-_Sistema Sapuri v1.0_
+
+⚔️ *GoT (Guerra dos Titãs - 3x3):*
+
+/got
+↳ Top 5 estratégias GoT
+
+/got [busca]
+↳ Busca por nome
+↳ Ex: /got explosivo
+
+/ataque [nome] [nome] [nome]
+↳ Busca ataque com cavaleiros
+↳ Ex: /ataque Kanon Aikos
+
+/defesa [nome] [nome] [nome]
+↳ Busca defesa com cavaleiros
+↳ Ex: /defesa Ikki Taça
+
+/dica [nome] [nome] [nome]
+↳ Dicas de defesa rápida
+↳ Ex: /dica Ikki Shun
+
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🗡️ *GvG (Guerra de Guildas - 5v5):*
+
+/gvg
+↳ Top 5 estratégias GvG
+
+/gvg [busca]
+↳ Busca por nome
+↳ Ex: /gvg cavalaria
+
+/gvg ataque [nomes]
+↳ Busca ataque GvG
+↳ Ex: /gvg ataque Seiya
+
+/gvg defesa [nomes]
+↳ Busca defesa GvG
+
+/gvg dica [nomes]
+↳ Dicas de defesa GvG
+
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 *Busca e Utilidades:*
+
+/nome
+↳ Lista todos os cavaleiros
+
+/nome [busca]
+↳ Busca cavaleiros
+↳ Ex: /nome Seiya
+
+/buscar [nome]
+↳ Busca estratégia por nome
+
+/status
+↳ Status do bot
+
+━━━━━━━━━━━━━━━━━━━━━━━
+_Sistema Sapuri v2.0_
 `;
 }
 
@@ -241,70 +288,461 @@ _Ex: /gvg cavalaria_
 `;
 }
 
+// ============ FUNÇÕES DE BUSCA AVANÇADA ============
+
+/**
+ * Buscar estratégias GoT por cavaleiros no ataque
+ */
+async function searchGotAttackByCharacters(names: string[]): Promise<GotStrategy[]> {
+  const db = await getDb();
+  if (!db || names.length === 0) return [];
+
+  try {
+    // Buscar todas as estratégias GoT
+    const allStrategies = await db.select().from(gotStrategies).orderBy(desc(gotStrategies.usageCount));
+    
+    // Filtrar para encontrar estratégias que contém TODOS os cavaleiros no ataque
+    const filtered = allStrategies.filter(strategy => {
+      const attackFormation = `${strategy.attackFormation1} ${strategy.attackFormation2} ${strategy.attackFormation3}`.toLowerCase();
+      return names.every(name => attackFormation.includes(name.toLowerCase()));
+    });
+
+    return filtered.slice(0, MAX_STRATEGIES_PER_RESPONSE);
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar estratégias de ataque:", error);
+    return [];
+  }
+}
+
+/**
+ * Buscar estratégias GoT por cavaleiros na defesa
+ */
+async function searchGotDefenseByCharacters(names: string[]): Promise<GotStrategy[]> {
+  const db = await getDb();
+  if (!db || names.length === 0) return [];
+
+  try {
+    const allStrategies = await db.select().from(gotStrategies).orderBy(desc(gotStrategies.usageCount));
+    
+    const filtered = allStrategies.filter(strategy => {
+      const defenseFormation = `${strategy.defenseFormation1} ${strategy.defenseFormation2} ${strategy.defenseFormation3}`.toLowerCase();
+      return names.every(name => defenseFormation.includes(name.toLowerCase()));
+    });
+
+    return filtered.slice(0, MAX_STRATEGIES_PER_RESPONSE);
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar estratégias de defesa:", error);
+    return [];
+  }
+}
+
+/**
+ * Buscar estratégias GvG por cavaleiros no ataque
+ */
+async function searchGvgAttackByCharacters(names: string[]): Promise<GvgStrategy[]> {
+  const db = await getDb();
+  if (!db || names.length === 0) return [];
+
+  try {
+    const allStrategies = await db.select().from(gvgStrategies).orderBy(desc(gvgStrategies.usageCount));
+    
+    const filtered = allStrategies.filter(strategy => {
+      const attackFormation = `${strategy.attackFormation1} ${strategy.attackFormation2} ${strategy.attackFormation3} ${strategy.attackFormation4} ${strategy.attackFormation5}`.toLowerCase();
+      return names.every(name => attackFormation.includes(name.toLowerCase()));
+    });
+
+    return filtered.slice(0, MAX_STRATEGIES_PER_RESPONSE);
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar estratégias GvG de ataque:", error);
+    return [];
+  }
+}
+
+/**
+ * Buscar estratégias GvG por cavaleiros na defesa
+ */
+async function searchGvgDefenseByCharacters(names: string[]): Promise<GvgStrategy[]> {
+  const db = await getDb();
+  if (!db || names.length === 0) return [];
+
+  try {
+    const allStrategies = await db.select().from(gvgStrategies).orderBy(desc(gvgStrategies.usageCount));
+    
+    const filtered = allStrategies.filter(strategy => {
+      const defenseFormation = `${strategy.defenseFormation1} ${strategy.defenseFormation2} ${strategy.defenseFormation3} ${strategy.defenseFormation4} ${strategy.defenseFormation5}`.toLowerCase();
+      return names.every(name => defenseFormation.includes(name.toLowerCase()));
+    });
+
+    return filtered.slice(0, MAX_STRATEGIES_PER_RESPONSE);
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar estratégias GvG de defesa:", error);
+    return [];
+  }
+}
+
+/**
+ * Buscar cavaleiros disponíveis
+ */
+async function searchCharacters(searchTerm?: string): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  try {
+    // Buscar de GoT
+    const gotResults = await db.select().from(gotStrategies);
+    const gvgResults = await db.select().from(gvgStrategies);
+
+    const characters = new Set<string>();
+    
+    // Extrair cavaleiros das formações GoT
+    gotResults.forEach(s => {
+      [s.attackFormation1, s.attackFormation2, s.attackFormation3,
+       s.defenseFormation1, s.defenseFormation2, s.defenseFormation3].forEach(f => {
+        if (f) f.split(/[,\/\s]+/).forEach(c => {
+          const cleaned = c.trim();
+          if (cleaned.length > 2) characters.add(cleaned);
+        });
+      });
+    });
+
+    // Extrair de GvG
+    gvgResults.forEach(s => {
+      [s.attackFormation1, s.attackFormation2, s.attackFormation3, s.attackFormation4, s.attackFormation5,
+       s.defenseFormation1, s.defenseFormation2, s.defenseFormation3, s.defenseFormation4, s.defenseFormation5].forEach(f => {
+        if (f) f.split(/[,\/\s]+/).forEach(c => {
+          const cleaned = c.trim();
+          if (cleaned.length > 2) characters.add(cleaned);
+        });
+      });
+    });
+
+    let result = Array.from(characters).sort();
+    
+    if (searchTerm && searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(c => c.toLowerCase().includes(term));
+    }
+
+    return result.slice(0, 30);
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar cavaleiros:", error);
+    return [];
+  }
+}
+
+/**
+ * Formatar lista de ataques GoT
+ */
+function formatGotAttackList(strategies: GotStrategy[], characterNames: string): string {
+  if (strategies.length === 0) {
+    return `❌ Nenhuma estratégia de ataque encontrada para "${characterNames}"\n\n_Tente outros cavaleiros._`;
+  }
+
+  let message = `⚔️ *Ataques com ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  strategies.forEach((s, i) => {
+    message += `*${i + 1}.* ${s.name || `Estratégia #${s.id}`}\n`;
+    message += `⚔️ ${s.attackFormation1}\n`;
+    message += `⚔️ ${s.attackFormation2}\n`;
+    message += `⚔️ ${s.attackFormation3}\n`;
+    message += `🛡️ Contra: ${s.defenseFormation1} / ${s.defenseFormation2} / ${s.defenseFormation3}\n\n`;
+  });
+
+  return message;
+}
+
+/**
+ * Formatar lista de defesas GoT
+ */
+function formatGotDefenseList(strategies: GotStrategy[], characterNames: string): string {
+  if (strategies.length === 0) {
+    return `❌ Nenhuma estratégia de defesa encontrada para "${characterNames}"\n\n_Tente outros cavaleiros._`;
+  }
+
+  let message = `🛡️ *Defesas com ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  strategies.forEach((s, i) => {
+    message += `*${i + 1}.* ${s.name || `Estratégia #${s.id}`}\n`;
+    message += `🛡️ ${s.defenseFormation1}\n`;
+    message += `🛡️ ${s.defenseFormation2}\n`;
+    message += `🛡️ ${s.defenseFormation3}\n`;
+    message += `⚔️ Contra: ${s.attackFormation1} / ${s.attackFormation2} / ${s.attackFormation3}\n\n`;
+  });
+
+  return message;
+}
+
+/**
+ * Formatar dicas de defesa (apenas defesas, sem ataque)
+ */
+function formatDefenseTips(strategies: GotStrategy[], characterNames: string): string {
+  if (strategies.length === 0) {
+    return `❌ Nenhuma dica de defesa encontrada para "${characterNames}"\n\n_Tente outros cavaleiros._`;
+  }
+
+  let message = `💡 *Dicas de Defesa - ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  strategies.forEach((s, i) => {
+    message += `*${i + 1}.* 🛡️ ${s.defenseFormation1} / ${s.defenseFormation2} / ${s.defenseFormation3}\n`;
+  });
+
+  return message;
+}
+
+/**
+ * Formatar ataques GvG
+ */
+function formatGvgAttackList(strategies: GvgStrategy[], characterNames: string): string {
+  if (strategies.length === 0) {
+    return `❌ Nenhuma estratégia GvG de ataque encontrada para "${characterNames}"`;
+  }
+
+  let message = `🗡️ *Ataques GvG - ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  strategies.forEach((s, i) => {
+    message += `*${i + 1}.* ${s.name || `Estratégia #${s.id}`}\n`;
+    message += `⚔️ ${s.attackFormation1}\n`;
+    message += `⚔️ ${s.attackFormation2}\n`;
+    message += `⚔️ ${s.attackFormation3}\n`;
+    message += `⚔️ ${s.attackFormation4}\n`;
+    message += `⚔️ ${s.attackFormation5}\n\n`;
+  });
+
+  return message;
+}
+
+/**
+ * Formatar defesas GvG
+ */
+function formatGvgDefenseList(strategies: GvgStrategy[], characterNames: string): string {
+  if (strategies.length === 0) {
+    return `❌ Nenhuma estratégia GvG de defesa encontrada para "${characterNames}"`;
+  }
+
+  let message = `🛡️ *Defesas GvG - ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  strategies.forEach((s, i) => {
+    message += `*${i + 1}.* ${s.name || `Estratégia #${s.id}`}\n`;
+    message += `🛡️ ${s.defenseFormation1}\n`;
+    message += `🛡️ ${s.defenseFormation2}\n`;
+    message += `🛡️ ${s.defenseFormation3}\n`;
+    message += `🛡️ ${s.defenseFormation4}\n`;
+    message += `🛡️ ${s.defenseFormation5}\n\n`;
+  });
+
+  return message;
+}
+
+/**
+ * Formatar dicas GvG
+ */
+function formatGvgTips(strategies: GvgStrategy[], characterNames: string): string {
+  if (strategies.length === 0) {
+    return `❌ Nenhuma dica GvG encontrada para "${characterNames}"`;
+  }
+
+  let message = `💡 *Dicas GvG - ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  strategies.forEach((s, i) => {
+    message += `*${i + 1}.* 🛡️ ${s.defenseFormation1} / ${s.defenseFormation2} / ${s.defenseFormation3} / ${s.defenseFormation4} / ${s.defenseFormation5}\n`;
+  });
+
+  return message;
+}
+
 /**
  * Processar comando recebido
  */
 async function processCommand(command: string): Promise<string | null> {
-  const trimmed = command.trim().toLowerCase();
+  const trimmed = command.trim();
+  const lowerCommand = trimmed.toLowerCase();
   
   // Verificar se é um comando (começa com /)
-  if (!trimmed.startsWith("/")) {
+  if (!lowerCommand.startsWith("/")) {
     return null;
   }
 
-  const parts = trimmed.split(/\s+/);
+  const parts = lowerCommand.split(/\s+/);
   const cmd = parts[0];
-  const searchTerm = parts.slice(1).join(" ");
+  const searchTerm = trimmed.substring(cmd.length).trim();
+  const names = searchTerm.split(/\s+/).filter(n => n.length > 0);
 
   console.log(`[WhatsApp Bot] Processando comando: ${cmd}, termo: "${searchTerm}"`);
 
+  // Comandos básicos
   switch (cmd) {
     case "/help":
     case "/ajuda":
+    case "/comandos":
       return getHelpMessage();
 
     case "/estrategias":
     case "/estratégias":
       return getStrategiesTypesMessage();
 
-    case "/gvg": {
-      const strategies = await searchGvgStrategies(searchTerm || undefined);
-      
-      if (strategies.length === 0) {
-        return searchTerm
-          ? `❌ Nenhuma estratégia GvG encontrada para "${searchTerm}"\n\n_Tente outro termo ou use /gvg para ver as mais usadas._`
-          : "❌ Nenhuma estratégia GvG cadastrada no sistema.";
-      }
-
-      const header = searchTerm
-        ? `🔍 *Resultados para "${searchTerm}":*\n`
-        : `📊 *Top ${strategies.length} Estratégias GvG:*\n`;
-      
-      const formatted = strategies.map(formatGvgStrategy).join("\n━━━━━━━━━━━━━━━━━━\n");
-      return header + formatted;
-    }
-
-    case "/got": {
-      const strategies = await searchGotStrategies(searchTerm || undefined);
-      
-      if (strategies.length === 0) {
-        return searchTerm
-          ? `❌ Nenhuma estratégia GoT encontrada para "${searchTerm}"\n\n_Tente outro termo ou use /got para ver as mais usadas._`
-          : "❌ Nenhuma estratégia GoT cadastrada no sistema.";
-      }
-
-      const header = searchTerm
-        ? `🔍 *Resultados para "${searchTerm}":*\n`
-        : `📊 *Top ${strategies.length} Estratégias GoT:*\n`;
-      
-      const formatted = strategies.map(formatGotStrategy).join("\n━━━━━━━━━━━━━━━━━━\n");
-      return header + formatted;
-    }
-
-    default:
-      // Comando não reconhecido - não responde (evita spam)
-      return null;
+    case "/status":
+      return `✅ *Bot Status*\n━━━━━━━━━━━━━━━━━━\n\n🟢 Bot está ativo e respondendo!\n⏰ ${new Date().toLocaleString('pt-BR')}\n\n_Use /comandos para ver todos os comandos._`;
   }
+
+  // Comandos de GvG (verificar primeiro para evitar conflito com /gvg simples)
+  if (lowerCommand.startsWith("/gvg ataque")) {
+    const input = searchTerm.replace(/^ataque\s*/i, "").trim();
+    const charNames = input.split(/\s+/).filter(n => n.length > 0).slice(0, 5);
+    
+    if (charNames.length === 0) {
+      return "❌ Por favor, especifique até 5 cavaleiros.\n\n_Ex: /gvg ataque Seiya Shiryu Hyoga_";
+    }
+    
+    const strategies = await searchGvgAttackByCharacters(charNames);
+    return formatGvgAttackList(strategies, charNames.join(" / "));
+  }
+
+  if (lowerCommand.startsWith("/gvg defesa")) {
+    const input = searchTerm.replace(/^defesa\s*/i, "").trim();
+    const charNames = input.split(/\s+/).filter(n => n.length > 0).slice(0, 5);
+    
+    if (charNames.length === 0) {
+      return "❌ Por favor, especifique até 5 cavaleiros.\n\n_Ex: /gvg defesa Ikki Shun_";
+    }
+    
+    const strategies = await searchGvgDefenseByCharacters(charNames);
+    return formatGvgDefenseList(strategies, charNames.join(" / "));
+  }
+
+  if (lowerCommand.startsWith("/gvg dica")) {
+    const input = searchTerm.replace(/^dica\s*/i, "").trim();
+    const charNames = input.split(/\s+/).filter(n => n.length > 0).slice(0, 5);
+    
+    if (charNames.length === 0) {
+      return "❌ Por favor, especifique até 5 cavaleiros.\n\n_Ex: /gvg dica Seiya Shiryu_";
+    }
+    
+    const strategies = await searchGvgDefenseByCharacters(charNames);
+    return formatGvgTips(strategies, charNames.join(" / "));
+  }
+
+  // /gvg simples ou com busca
+  if (cmd === "/gvg") {
+    const strategies = await searchGvgStrategies(searchTerm || undefined);
+    
+    if (strategies.length === 0) {
+      return searchTerm
+        ? `❌ Nenhuma estratégia GvG encontrada para "${searchTerm}"\n\n_Tente outro termo ou use /gvg para ver as mais usadas._`
+        : "❌ Nenhuma estratégia GvG cadastrada no sistema.";
+    }
+
+    const header = searchTerm
+      ? `🔍 *Resultados para "${searchTerm}":*\n`
+      : `🗡️ *Top ${strategies.length} Estratégias GvG:*\n`;
+    
+    const formatted = strategies.map(formatGvgStrategy).join("\n━━━━━━━━━━━━━━━━━━\n");
+    return header + formatted;
+  }
+
+  // /got
+  if (cmd === "/got") {
+    const strategies = await searchGotStrategies(searchTerm || undefined);
+    
+    if (strategies.length === 0) {
+      return searchTerm
+        ? `❌ Nenhuma estratégia GoT encontrada para "${searchTerm}"\n\n_Tente outro termo ou use /got para ver as mais usadas._`
+        : "❌ Nenhuma estratégia GoT cadastrada no sistema.";
+    }
+
+    const header = searchTerm
+      ? `🔍 *Resultados para "${searchTerm}":*\n`
+      : `⚔️ *Top ${strategies.length} Estratégias GoT:*\n`;
+    
+    const formatted = strategies.map(formatGotStrategy).join("\n━━━━━━━━━━━━━━━━━━\n");
+    return header + formatted;
+  }
+
+  // /ataque [nomes] - GoT attack
+  if (cmd === "/ataque") {
+    if (names.length === 0) {
+      return "❌ Por favor, especifique até 3 cavaleiros.\n\n_Ex: /ataque Kanon Aikos Hyoga_";
+    }
+    
+    const charNames = names.slice(0, 3);
+    const strategies = await searchGotAttackByCharacters(charNames);
+    return formatGotAttackList(strategies, charNames.join(" / "));
+  }
+
+  // /defesa [nomes] - GoT defense
+  if (cmd === "/defesa") {
+    if (names.length === 0) {
+      return "❌ Por favor, especifique até 3 cavaleiros.\n\n_Ex: /defesa Ikki Taça ShunD_";
+    }
+    
+    const charNames = names.slice(0, 3);
+    const strategies = await searchGotDefenseByCharacters(charNames);
+    return formatGotDefenseList(strategies, charNames.join(" / "));
+  }
+
+  // /dica [nomes] - Defense tips
+  if (cmd === "/dica") {
+    if (names.length === 0) {
+      return "❌ Por favor, especifique até 3 cavaleiros.\n\n_Ex: /dica Ikki Shun_";
+    }
+    
+    const charNames = names.slice(0, 3);
+    const strategies = await searchGotDefenseByCharacters(charNames);
+    return formatDefenseTips(strategies, charNames.join(" / "));
+  }
+
+  // /nome [busca] - Search characters
+  if (cmd === "/nome") {
+    const characters = await searchCharacters(searchTerm || undefined);
+    
+    if (characters.length === 0) {
+      return searchTerm
+        ? `❌ Nenhum cavaleiro encontrado para "${searchTerm}"`
+        : "❌ Nenhum cavaleiro encontrado no banco de dados.";
+    }
+
+    const header = searchTerm
+      ? `🔍 *Cavaleiros com "${searchTerm}":*\n\n`
+      : `📋 *Cavaleiros Disponíveis:*\n\n`;
+    
+    const list = characters.map((c, i) => `${i + 1}. ${c}`).join("\n");
+    return header + list;
+  }
+
+  // /buscar [nome] - Search strategies by name
+  if (cmd === "/buscar") {
+    if (!searchTerm) {
+      return "❌ Por favor, especifique o nome da estratégia.\n\n_Ex: /buscar explosivo_";
+    }
+
+    const gotResults = await searchGotStrategies(searchTerm);
+    const gvgResults = await searchGvgStrategies(searchTerm);
+    
+    if (gotResults.length === 0 && gvgResults.length === 0) {
+      return `❌ Nenhuma estratégia encontrada para "${searchTerm}"`;
+    }
+
+    let message = `🔍 *Resultados para "${searchTerm}":*\n━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    if (gotResults.length > 0) {
+      message += `⚔️ *GoT (${gotResults.length}):*\n`;
+      gotResults.slice(0, 3).forEach(s => {
+        message += `• ${s.name || `#${s.id}`}\n`;
+      });
+      message += "\n";
+    }
+    
+    if (gvgResults.length > 0) {
+      message += `🗡️ *GvG (${gvgResults.length}):*\n`;
+      gvgResults.slice(0, 3).forEach(s => {
+        message += `• ${s.name || `#${s.id}`}\n`;
+      });
+    }
+
+    return message;
+  }
+
+  // Comando não reconhecido - não responde (evita spam)
+  return null;
 }
 
 /**
