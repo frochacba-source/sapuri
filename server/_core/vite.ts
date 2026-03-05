@@ -50,9 +50,17 @@ export async function setupVite(app: Express, server: Server) {
 export function serveStatic(app: Express) {
   // Use process.cwd() for more reliable path resolution in production
   const distPath = path.resolve(process.cwd(), "dist", "public");
+  const assetsPath = path.resolve(distPath, "assets");
   
+  console.log(`[Static] CWD: ${process.cwd()}`);
   console.log(`[Static] Serving static files from: ${distPath}`);
   console.log(`[Static] Directory exists: ${fs.existsSync(distPath)}`);
+  console.log(`[Static] Assets directory exists: ${fs.existsSync(assetsPath)}`);
+  
+  if (fs.existsSync(assetsPath)) {
+    const files = fs.readdirSync(assetsPath).slice(0, 5);
+    console.log(`[Static] Sample assets: ${files.join(', ')}`);
+  }
   
   if (!fs.existsSync(distPath)) {
     console.error(

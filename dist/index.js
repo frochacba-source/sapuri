@@ -8365,8 +8365,15 @@ async function setupVite(app, server) {
 }
 function serveStatic(app) {
   const distPath = path5.resolve(process.cwd(), "dist", "public");
+  const assetsPath = path5.resolve(distPath, "assets");
+  console.log(`[Static] CWD: ${process.cwd()}`);
   console.log(`[Static] Serving static files from: ${distPath}`);
   console.log(`[Static] Directory exists: ${fs4.existsSync(distPath)}`);
+  console.log(`[Static] Assets directory exists: ${fs4.existsSync(assetsPath)}`);
+  if (fs4.existsSync(assetsPath)) {
+    const files = fs4.readdirSync(assetsPath).slice(0, 5);
+    console.log(`[Static] Sample assets: ${files.join(", ")}`);
+  }
   if (!fs4.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
