@@ -8364,13 +8364,23 @@ async function setupVite(app, server) {
   });
 }
 function serveStatic(app) {
-  const distPath = process.env.NODE_ENV === "development" ? path5.resolve(import.meta.dirname, "../..", "dist", "public") : path5.resolve(import.meta.dirname, "public");
+  const distPath = path5.resolve(process.cwd(), "dist", "public");
+  console.log(`[Static] Serving static files from: ${distPath}`);
+  console.log(`[Static] Directory exists: ${fs4.existsSync(distPath)}`);
   if (!fs4.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".js")) {
+        res.setHeader("Content-Type", "application/javascript");
+      } else if (filePath.endsWith(".css")) {
+        res.setHeader("Content-Type", "text/css");
+      }
+    }
+  }));
   app.use("*", (_req, res) => {
     res.sendFile(path5.resolve(distPath, "index.html"));
   });
