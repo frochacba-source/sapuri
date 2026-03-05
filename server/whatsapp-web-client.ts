@@ -212,17 +212,17 @@ function getHelpMessage(): string {
 ↳ Busca por nome
 ↳ Ex: /got explosivo
 
-/ataque [nome] [nome] [nome]
-↳ Busca ataque com cavaleiros
-↳ Ex: /ataque Kanon Aikos
+/ataque [nomes]
+↳ Busca ataque GoT (até 3 nomes)
+↳ Ex: /ataque Kanon Aikos ShunD
 
-/defesa [nome] [nome] [nome]
-↳ Busca defesa com cavaleiros
-↳ Ex: /defesa Ikki Taça
+/defesa [nomes]
+↳ Busca defesa GoT (até 3 nomes)
+↳ Ex: /defesa Ikki Taça Hades
 
-/dica [nome] [nome] [nome]
+/dica [nomes]
 ↳ Dicas de defesa rápida
-↳ Ex: /dica Ikki Shun
+↳ Ex: /dica Ikki Shun MuD
 
 ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -236,14 +236,16 @@ function getHelpMessage(): string {
 ↳ Ex: /gvg cavalaria
 
 /gvg ataque [nomes]
-↳ Busca ataque GvG
-↳ Ex: /gvg ataque Seiya
+↳ Busca ataque GvG (até 5 nomes)
+↳ Ex: /gvg ataque Seiya Shiryu Hyoga
 
 /gvg defesa [nomes]
-↳ Busca defesa GvG
+↳ Busca defesa GvG (até 5 nomes)
+↳ Ex: /gvg defesa CamusD MiloD Ikki
 
 /gvg dica [nomes]
 ↳ Dicas de defesa GvG
+↳ Ex: /gvg dica Hades MuD
 
 ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -431,43 +433,53 @@ async function searchCharacters(searchTerm?: string): Promise<string[]> {
 }
 
 /**
- * Formatar lista de ataques GoT
+ * Formatar ataques GoT - Formato igual ao Telegram
  */
 function formatGotAttackList(strategies: GotStrategy[], characterNames: string): string {
   if (strategies.length === 0) {
-    return `❌ Nenhuma estratégia de ataque encontrada para "${characterNames}"\n\n_Tente outros cavaleiros._`;
+    return `❌ Nenhuma estratégia de ataque encontrada para ${characterNames}.`;
   }
 
-  let message = `⚔️ *Ataques com ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
-  
-  strategies.forEach((s, i) => {
-    message += `*${i + 1}.* ${s.name || `Estratégia #${s.id}`}\n`;
-    message += `⚔️ ${s.attackFormation1}\n`;
-    message += `⚔️ ${s.attackFormation2}\n`;
-    message += `⚔️ ${s.attackFormation3}\n`;
-    message += `🛡️ Contra: ${s.defenseFormation1} / ${s.defenseFormation2} / ${s.defenseFormation3}\n\n`;
+  let message = `🤖 Estratégias de Ataque - ${characterNames}\n\n`;
+
+  // Mostrar até 5 estratégias
+  strategies.slice(0, 5).forEach((s) => {
+    message += `Ataque ⚔️ x 🛡️ Defesa\n\n`;
+    message += `${s.attackFormation1} x ${s.defenseFormation1}\n`;
+    message += `${s.attackFormation2} x ${s.defenseFormation2}\n`;
+    message += `${s.attackFormation3} x ${s.defenseFormation3}\n\n`;
   });
+
+  // Se houver mais de 5, mostrar mensagem
+  if (strategies.length > 5) {
+    message += `... e mais ${strategies.length - 5} estratégias disponíveis.`;
+  }
 
   return message;
 }
 
 /**
- * Formatar lista de defesas GoT
+ * Formatar defesas GoT - Formato igual ao Telegram
  */
 function formatGotDefenseList(strategies: GotStrategy[], characterNames: string): string {
   if (strategies.length === 0) {
-    return `❌ Nenhuma estratégia de defesa encontrada para "${characterNames}"\n\n_Tente outros cavaleiros._`;
+    return `❌ Nenhuma estratégia de defesa encontrada para ${characterNames}.`;
   }
 
-  let message = `🛡️ *Defesas com ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
-  
-  strategies.forEach((s, i) => {
-    message += `*${i + 1}.* ${s.name || `Estratégia #${s.id}`}\n`;
-    message += `🛡️ ${s.defenseFormation1}\n`;
-    message += `🛡️ ${s.defenseFormation2}\n`;
-    message += `🛡️ ${s.defenseFormation3}\n`;
-    message += `⚔️ Contra: ${s.attackFormation1} / ${s.attackFormation2} / ${s.attackFormation3}\n\n`;
+  let message = `🤖 Estratégias de Defesa - ${characterNames}\n\n`;
+
+  // Mostrar até 5 estratégias
+  strategies.slice(0, 5).forEach((s) => {
+    message += `Ataque ⚔️ x 🛡️ Defesa\n\n`;
+    message += `${s.attackFormation1} x ${s.defenseFormation1}\n`;
+    message += `${s.attackFormation2} x ${s.defenseFormation2}\n`;
+    message += `${s.attackFormation3} x ${s.defenseFormation3}\n\n`;
   });
+
+  // Se houver mais de 5, mostrar mensagem
+  if (strategies.length > 5) {
+    message += `... e mais ${strategies.length - 5} estratégias disponíveis.`;
+  }
 
   return message;
 }
@@ -490,45 +502,57 @@ function formatDefenseTips(strategies: GotStrategy[], characterNames: string): s
 }
 
 /**
- * Formatar ataques GvG
+ * Formatar ataques GvG - Formato igual ao Telegram
  */
 function formatGvgAttackList(strategies: GvgStrategy[], characterNames: string): string {
   if (strategies.length === 0) {
-    return `❌ Nenhuma estratégia GvG de ataque encontrada para "${characterNames}"`;
+    return `❌ Nenhuma estratégia de ataque GVG encontrada para ${characterNames}.`;
   }
 
-  let message = `🗡️ *Ataques GvG - ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
-  
-  strategies.forEach((s, i) => {
-    message += `*${i + 1}.* ${s.name || `Estratégia #${s.id}`}\n`;
-    message += `⚔️ ${s.attackFormation1}\n`;
-    message += `⚔️ ${s.attackFormation2}\n`;
-    message += `⚔️ ${s.attackFormation3}\n`;
-    message += `⚔️ ${s.attackFormation4}\n`;
-    message += `⚔️ ${s.attackFormation5}\n\n`;
+  let message = `🤖 Estratégias de Ataque GVG - ${characterNames}\n\n`;
+
+  // Mostrar até 5 estratégias
+  strategies.slice(0, 5).forEach((s) => {
+    message += `Ataque ⚔️ x 🛡️ Defesa\n\n`;
+    message += `${s.attackFormation1} x ${s.defenseFormation1}\n`;
+    message += `${s.attackFormation2} x ${s.defenseFormation2}\n`;
+    message += `${s.attackFormation3} x ${s.defenseFormation3}\n`;
+    message += `${s.attackFormation4} x ${s.defenseFormation4}\n`;
+    message += `${s.attackFormation5} x ${s.defenseFormation5}\n\n`;
   });
+
+  // Se houver mais de 5, mostrar mensagem
+  if (strategies.length > 5) {
+    message += `... e mais ${strategies.length - 5} estratégias disponíveis.`;
+  }
 
   return message;
 }
 
 /**
- * Formatar defesas GvG
+ * Formatar defesas GvG - Formato igual ao Telegram
  */
 function formatGvgDefenseList(strategies: GvgStrategy[], characterNames: string): string {
   if (strategies.length === 0) {
-    return `❌ Nenhuma estratégia GvG de defesa encontrada para "${characterNames}"`;
+    return `❌ Nenhuma estratégia de defesa GVG encontrada para ${characterNames}.`;
   }
 
-  let message = `🛡️ *Defesas GvG - ${characterNames}:*\n━━━━━━━━━━━━━━━━━━\n\n`;
-  
-  strategies.forEach((s, i) => {
-    message += `*${i + 1}.* ${s.name || `Estratégia #${s.id}`}\n`;
-    message += `🛡️ ${s.defenseFormation1}\n`;
-    message += `🛡️ ${s.defenseFormation2}\n`;
-    message += `🛡️ ${s.defenseFormation3}\n`;
-    message += `🛡️ ${s.defenseFormation4}\n`;
-    message += `🛡️ ${s.defenseFormation5}\n\n`;
+  let message = `🤖 Estratégias de Defesa GVG - ${characterNames}\n\n`;
+
+  // Mostrar até 5 estratégias
+  strategies.slice(0, 5).forEach((s) => {
+    message += `Ataque ⚔️ x 🛡️ Defesa\n\n`;
+    message += `${s.attackFormation1} x ${s.defenseFormation1}\n`;
+    message += `${s.attackFormation2} x ${s.defenseFormation2}\n`;
+    message += `${s.attackFormation3} x ${s.defenseFormation3}\n`;
+    message += `${s.attackFormation4} x ${s.defenseFormation4}\n`;
+    message += `${s.attackFormation5} x ${s.defenseFormation5}\n\n`;
   });
+
+  // Se houver mais de 5, mostrar mensagem
+  if (strategies.length > 5) {
+    message += `... e mais ${strategies.length - 5} estratégias disponíveis.`;
+  }
 
   return message;
 }
