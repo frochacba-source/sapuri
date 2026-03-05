@@ -354,8 +354,6 @@ export default function GvgAvisosWhatsApp() {
 
 Pessoal, escolham seus adversários e arrumem as defesas para teste.
 
-📝 *Coloque os números um abaixo do outro, do 1 ao 20:*
-
 1
 2
 3
