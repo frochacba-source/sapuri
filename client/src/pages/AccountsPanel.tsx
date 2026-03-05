@@ -21,7 +21,13 @@ import {
   Users,
   Settings,
   Save,
-  RefreshCw
+  RefreshCw,
+  User,
+  Phone,
+  Mail,
+  FileText,
+  Info,
+  Eye
 } from 'lucide-react';
 
 interface Account {
@@ -31,6 +37,11 @@ interface Account {
   description: string;
   images: string[];
   createdAt: number;
+  // Informações do vendedor (controle interno)
+  sellerName?: string;
+  sellerContact?: string;
+  sellerEmail?: string;
+  sellerNotes?: string;
 }
 
 interface SchedulerStatus {
@@ -76,8 +87,15 @@ export default function AccountsPanel() {
     gameName: '',
     price: '',
     description: '',
+    sellerName: '',
+    sellerContact: '',
+    sellerEmail: '',
+    sellerNotes: '',
   });
   const [saving, setSaving] = useState(false);
+
+  // Estado do modal de detalhes do vendedor
+  const [viewingSellerInfo, setViewingSellerInfo] = useState<Account | null>(null);
 
   // Confirmação de exclusão
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -88,6 +106,10 @@ export default function AccountsPanel() {
     price: '',
     description: '',
     images: [] as File[],
+    sellerName: '',
+    sellerContact: '',
+    sellerEmail: '',
+    sellerNotes: '',
   });
 
   // Carregar contas, status do scheduler e grupos
@@ -215,6 +237,12 @@ export default function AccountsPanel() {
       formDataToSend.append('gameName', formData.gameName);
       formDataToSend.append('price', formData.price);
       formDataToSend.append('description', formData.description);
+      
+      // Adicionar campos do vendedor (controle interno)
+      if (formData.sellerName) formDataToSend.append('sellerName', formData.sellerName);
+      if (formData.sellerContact) formDataToSend.append('sellerContact', formData.sellerContact);
+      if (formData.sellerEmail) formDataToSend.append('sellerEmail', formData.sellerEmail);
+      if (formData.sellerNotes) formDataToSend.append('sellerNotes', formData.sellerNotes);
 
       formData.images.forEach((image) => {
         formDataToSend.append('images', image);
@@ -232,6 +260,10 @@ export default function AccountsPanel() {
           price: '',
           description: '',
           images: [],
+          sellerName: '',
+          sellerContact: '',
+          sellerEmail: '',
+          sellerNotes: '',
         });
         loadAccounts();
       } else {
@@ -252,13 +284,17 @@ export default function AccountsPanel() {
       gameName: account.gameName,
       price: account.price.toString(),
       description: account.description,
+      sellerName: account.sellerName || '',
+      sellerContact: account.sellerContact || '',
+      sellerEmail: account.sellerEmail || '',
+      sellerNotes: account.sellerNotes || '',
     });
   };
 
   // Fechar modal de edição
   const closeEditModal = () => {
     setEditingAccount(null);
-    setEditForm({ gameName: '', price: '', description: '' });
+    setEditForm({ gameName: '', price: '', description: '', sellerName: '', sellerContact: '', sellerEmail: '', sellerNotes: '' });
   };
 
   // Salvar edição
@@ -274,6 +310,10 @@ export default function AccountsPanel() {
           gameName: editForm.gameName,
           price: editForm.price,
           description: editForm.description,
+          sellerName: editForm.sellerName,
+          sellerContact: editForm.sellerContact,
+          sellerEmail: editForm.sellerEmail,
+          sellerNotes: editForm.sellerNotes,
         }),
       });
 
@@ -508,6 +548,73 @@ export default function AccountsPanel() {
                     {formData.images.length} arquivo(s) selecionado(s)
                   </p>
                 )}
+              </div>
+
+              {/* Seção do Vendedor - Controle Interno */}
+              <div className="border-t border-gray-700 pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-amber-400 flex items-center gap-2 mb-3">
+                  <User className="w-4 h-4" />
+                  Informações do Vendedor (Controle Interno)
+                </h4>
+                <p className="text-xs text-gray-500 mb-3">
+                  Esses dados são apenas para controle interno e NÃO serão enviados nas mensagens.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-400">
+                      <User className="w-3 h-3 inline mr-1" />
+                      Nome do Vendedor
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Nome do vendedor"
+                      value={formData.sellerName}
+                      onChange={(e) => setFormData({ ...formData, sellerName: e.target.value })}
+                      className="bg-gray-800 border-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-400">
+                      <Phone className="w-3 h-3 inline mr-1" />
+                      Contato/WhatsApp
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="(00) 00000-0000"
+                      value={formData.sellerContact}
+                      onChange={(e) => setFormData({ ...formData, sellerContact: e.target.value })}
+                      className="bg-gray-800 border-gray-700 text-sm"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <label className="block text-xs font-medium mb-1 text-gray-400">
+                    <Mail className="w-3 h-3 inline mr-1" />
+                    Email (opcional)
+                  </label>
+                  <Input
+                    type="email"
+                    placeholder="vendedor@email.com"
+                    value={formData.sellerEmail}
+                    onChange={(e) => setFormData({ ...formData, sellerEmail: e.target.value })}
+                    className="bg-gray-800 border-gray-700 text-sm"
+                  />
+                </div>
+                
+                <div className="mt-3">
+                  <label className="block text-xs font-medium mb-1 text-gray-400">
+                    <FileText className="w-3 h-3 inline mr-1" />
+                    Observações (opcional)
+                  </label>
+                  <Textarea
+                    placeholder="Notas internas sobre o vendedor ou a conta..."
+                    value={formData.sellerNotes}
+                    onChange={(e) => setFormData({ ...formData, sellerNotes: e.target.value })}
+                    className="bg-gray-800 border-gray-700 text-sm min-h-[60px]"
+                  />
+                </div>
               </div>
 
               <Button
@@ -800,6 +907,34 @@ export default function AccountsPanel() {
                           {new Date(account.createdAt).toLocaleDateString()}
                         </span>
                       </div>
+                      
+                      {/* Informações do Vendedor */}
+                      {(account.sellerName || account.sellerContact) && (
+                        <div className="mt-3 p-2 bg-amber-900/20 border border-amber-700/30 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-amber-400 text-xs">
+                              <User className="w-3 h-3" />
+                              <span className="font-medium">{account.sellerName || 'Vendedor'}</span>
+                              {account.sellerContact && (
+                                <>
+                                  <span className="text-amber-600">•</span>
+                                  <Phone className="w-3 h-3" />
+                                  <span>{account.sellerContact}</span>
+                                </>
+                              )}
+                            </div>
+                            <Button
+                              onClick={() => setViewingSellerInfo(account)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-amber-400 hover:text-amber-300 hover:bg-amber-900/30 h-6 px-2"
+                            >
+                              <Eye className="w-3 h-3 mr-1" />
+                              Ver mais
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Botões de Ação */}
@@ -893,8 +1028,8 @@ export default function AccountsPanel() {
 
       {/* Modal de Edição */}
       {editingAccount && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-lg my-4">
             <div className="p-6 border-b border-gray-700">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Edit2 className="w-5 h-5 text-blue-400" />
@@ -902,7 +1037,7 @@ export default function AccountsPanel() {
               </h2>
             </div>
             
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium mb-2">Nome do Jogo</label>
                 <Input
@@ -932,6 +1067,58 @@ export default function AccountsPanel() {
                   className="bg-gray-800 border-gray-700 min-h-[120px]"
                 />
               </div>
+
+              {/* Seção do Vendedor - Controle Interno */}
+              <div className="border-t border-gray-700 pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-amber-400 flex items-center gap-2 mb-3">
+                  <User className="w-4 h-4" />
+                  Informações do Vendedor (Controle Interno)
+                </h4>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-400">Nome do Vendedor</label>
+                    <Input
+                      type="text"
+                      placeholder="Nome do vendedor"
+                      value={editForm.sellerName}
+                      onChange={(e) => setEditForm({ ...editForm, sellerName: e.target.value })}
+                      className="bg-gray-800 border-gray-700 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-400">Contato/WhatsApp</label>
+                    <Input
+                      type="text"
+                      placeholder="(00) 00000-0000"
+                      value={editForm.sellerContact}
+                      onChange={(e) => setEditForm({ ...editForm, sellerContact: e.target.value })}
+                      className="bg-gray-800 border-gray-700 text-sm"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-3">
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Email (opcional)</label>
+                  <Input
+                    type="email"
+                    placeholder="vendedor@email.com"
+                    value={editForm.sellerEmail}
+                    onChange={(e) => setEditForm({ ...editForm, sellerEmail: e.target.value })}
+                    className="bg-gray-800 border-gray-700 text-sm"
+                  />
+                </div>
+                
+                <div className="mt-3">
+                  <label className="block text-xs font-medium mb-1 text-gray-400">Observações (opcional)</label>
+                  <Textarea
+                    placeholder="Notas internas..."
+                    value={editForm.sellerNotes}
+                    onChange={(e) => setEditForm({ ...editForm, sellerNotes: e.target.value })}
+                    className="bg-gray-800 border-gray-700 text-sm min-h-[60px]"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
@@ -958,6 +1145,100 @@ export default function AccountsPanel() {
                     Salvar
                   </>
                 )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Informações do Vendedor */}
+      {viewingSellerInfo && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-xl border border-amber-700/50 w-full max-w-md">
+            <div className="p-6 border-b border-amber-700/30 bg-amber-900/20">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-amber-400">
+                <User className="w-5 h-5" />
+                Informações do Vendedor
+              </h2>
+              <p className="text-xs text-amber-500/70 mt-1">
+                Dados de controle interno - Não enviados nas mensagens
+              </p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-800 rounded-lg p-4 space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Conta</p>
+                  <p className="text-white font-medium flex items-center gap-2">
+                    <Gamepad2 className="w-4 h-4 text-purple-400" />
+                    {viewingSellerInfo.gameName}
+                  </p>
+                </div>
+                
+                {viewingSellerInfo.sellerName && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Nome do Vendedor</p>
+                    <p className="text-white flex items-center gap-2">
+                      <User className="w-4 h-4 text-amber-400" />
+                      {viewingSellerInfo.sellerName}
+                    </p>
+                  </div>
+                )}
+                
+                {viewingSellerInfo.sellerContact && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Contato/WhatsApp</p>
+                    <p className="text-white flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-green-400" />
+                      {viewingSellerInfo.sellerContact}
+                    </p>
+                  </div>
+                )}
+                
+                {viewingSellerInfo.sellerEmail && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Email</p>
+                    <p className="text-white flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-blue-400" />
+                      {viewingSellerInfo.sellerEmail}
+                    </p>
+                  </div>
+                )}
+                
+                {viewingSellerInfo.sellerNotes && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Observações</p>
+                    <p className="text-gray-300 text-sm bg-gray-700/50 rounded p-2 mt-1">
+                      {viewingSellerInfo.sellerNotes}
+                    </p>
+                  </div>
+                )}
+                
+                {!viewingSellerInfo.sellerName && !viewingSellerInfo.sellerContact && !viewingSellerInfo.sellerEmail && !viewingSellerInfo.sellerNotes && (
+                  <p className="text-gray-500 text-center py-4">
+                    Nenhuma informação do vendedor cadastrada
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-700 flex justify-end gap-3">
+              <Button
+                onClick={() => setViewingSellerInfo(null)}
+                variant="outline"
+                className="border-gray-600"
+              >
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  openEditModal(viewingSellerInfo);
+                  setViewingSellerInfo(null);
+                }}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                <Edit2 className="w-4 h-4 mr-2" />
+                Editar
               </Button>
             </div>
           </div>

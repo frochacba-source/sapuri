@@ -17,6 +17,11 @@ interface Account {
   description: string;
   images: string[];
   createdAt: number;
+  // Informações do vendedor (controle interno - não enviadas nas mensagens)
+  sellerName?: string;
+  sellerContact?: string;
+  sellerEmail?: string;
+  sellerNotes?: string;
 }
 
 interface SchedulerState {
@@ -449,8 +454,22 @@ async function listAvailableGroups() {
   };
 }
 
+// Interface para dados do vendedor
+interface SellerInfo {
+  sellerName?: string;
+  sellerContact?: string;
+  sellerEmail?: string;
+  sellerNotes?: string;
+}
+
 // Adicionar nova conta
-function addAccount(gameName: string, price: number, description: string, images: string[]): Account {
+function addAccount(
+  gameName: string, 
+  price: number, 
+  description: string, 
+  images: string[],
+  sellerInfo?: SellerInfo
+): Account {
   const accounts = loadAccounts();
   const newAccount: Account = {
     id: Date.now().toString(),
@@ -459,6 +478,11 @@ function addAccount(gameName: string, price: number, description: string, images
     description,
     images,
     createdAt: Date.now(),
+    // Adicionar informações do vendedor se fornecidas
+    ...(sellerInfo?.sellerName && { sellerName: sellerInfo.sellerName }),
+    ...(sellerInfo?.sellerContact && { sellerContact: sellerInfo.sellerContact }),
+    ...(sellerInfo?.sellerEmail && { sellerEmail: sellerInfo.sellerEmail }),
+    ...(sellerInfo?.sellerNotes && { sellerNotes: sellerInfo.sellerNotes }),
   };
 
   accounts.push(newAccount);
@@ -488,7 +512,15 @@ function removeAccount(accountId: string): boolean {
 // Atualizar conta existente
 function updateAccount(
   accountId: string, 
-  updates: { gameName?: string; price?: number; description?: string }
+  updates: { 
+    gameName?: string; 
+    price?: number; 
+    description?: string;
+    sellerName?: string;
+    sellerContact?: string;
+    sellerEmail?: string;
+    sellerNotes?: string;
+  }
 ): Account | null {
   const accounts = loadAccounts();
   const accountIndex = accounts.findIndex(acc => acc.id === accountId);
@@ -497,7 +529,7 @@ function updateAccount(
     return null; // Conta não encontrada
   }
 
-  // Atualizar campos
+  // Atualizar campos da conta
   if (updates.gameName !== undefined) {
     accounts[accountIndex].gameName = updates.gameName;
   }
@@ -506,6 +538,20 @@ function updateAccount(
   }
   if (updates.description !== undefined) {
     accounts[accountIndex].description = updates.description;
+  }
+  
+  // Atualizar campos do vendedor (controle interno)
+  if (updates.sellerName !== undefined) {
+    accounts[accountIndex].sellerName = updates.sellerName || undefined;
+  }
+  if (updates.sellerContact !== undefined) {
+    accounts[accountIndex].sellerContact = updates.sellerContact || undefined;
+  }
+  if (updates.sellerEmail !== undefined) {
+    accounts[accountIndex].sellerEmail = updates.sellerEmail || undefined;
+  }
+  if (updates.sellerNotes !== undefined) {
+    accounts[accountIndex].sellerNotes = updates.sellerNotes || undefined;
   }
 
   saveAccounts(accounts);

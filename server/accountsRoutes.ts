@@ -56,7 +56,7 @@ router.get('/accounts', (_req, res) => {
 // POST /api/accounts/announce - Anuncia nova conta com upload de imagens
 router.post('/accounts/announce', upload.array('images', 10), async (req, res) => {
   try {
-    const { gameName, price, description } = req.body;
+    const { gameName, price, description, sellerName, sellerContact, sellerEmail, sellerNotes } = req.body;
     const files = req.files as Express.Multer.File[];
 
     if (!gameName || !price || !description) {
@@ -68,12 +68,21 @@ router.post('/accounts/announce', upload.array('images', 10), async (req, res) =
       ? files.map((file) => `/uploads/painel-contas/${file.filename}`)
       : [];
 
+    // Montar informações do vendedor (controle interno)
+    const sellerInfo = {
+      sellerName: sellerName || undefined,
+      sellerContact: sellerContact || undefined,
+      sellerEmail: sellerEmail || undefined,
+      sellerNotes: sellerNotes || undefined,
+    };
+
     // Adicionar conta (também envia ao Telegram)
     const account = await accountScheduler.addAccount(
       gameName,
       parseFloat(price),
       description,
-      imageUrls
+      imageUrls,
+      sellerInfo
     );
 
     res.json({ success: true, account });
@@ -104,12 +113,16 @@ router.delete('/accounts/:id', (req, res) => {
 router.put('/accounts/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const { gameName, price, description } = req.body;
+    const { gameName, price, description, sellerName, sellerContact, sellerEmail, sellerNotes } = req.body;
 
     const updatedAccount = accountScheduler.updateAccount(id, {
       gameName,
       price: price ? parseFloat(price) : undefined,
       description,
+      sellerName,
+      sellerContact,
+      sellerEmail,
+      sellerNotes,
     });
 
     if (updatedAccount) {
