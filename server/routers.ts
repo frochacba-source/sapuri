@@ -33,6 +33,7 @@ import { arayashikiSyncRouter } from "./routers/arayashikiSync";
 import { cardAnalysisRouter } from "./routers/cardAnalysis";
 import { accountsRouter } from "./routers/accounts";
 import { alertsRouter } from "./routers/alerts";
+import { customMessagesRouter } from "./routers/customMessages";
 import { exportStrategies, validateImportFile, parseImportFile, getImportStats } from "./exportImport";
 import { backupGotStrategy, backupGvgStrategy } from "./strategyBackup";
 import { storagePut } from "./storage";
@@ -2718,6 +2719,7 @@ ${memberList}
   arayashikiSync: arayashikiSyncRouter,
   cardAnalysis: cardAnalysisRouter,
   accounts: accountsRouter,
+  customMessages: customMessagesRouter,
 });
 
 

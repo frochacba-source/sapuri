@@ -172,6 +172,7 @@ function DashboardLayoutContent({
     if (location === '/membros') return 'Membros';
     if (location.includes('/escalacao/gvg')) return 'GvG - Escalação';
     if (location.includes('/avisos/gvg')) return 'GvG - Avisos';
+    if (location === '/gvg/mensagens-personalizadas') return 'GvG - Mensagens Personalizadas';
     if (location.includes('/escalacao/got')) return 'GoT - Escalação';
     if (location.includes('/avisos/got')) return 'GoT - Avisos';
     if (location.includes('/escalacao/reliquias')) return 'Relíquias - Escalação';
@@ -309,6 +310,15 @@ function DashboardLayoutContent({
                         className="h-9 pl-8 transition-all font-normal"
                       >
                         <span>Avisos WhatsApp</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={location === '/gvg/mensagens-personalizadas'}
+                        onClick={() => setLocation('/gvg/mensagens-personalizadas')}
+                        className="h-9 pl-8 transition-all font-normal"
+                      >
+                        <span>Mensagens Personalizadas</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>

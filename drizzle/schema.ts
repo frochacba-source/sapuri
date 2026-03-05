@@ -707,3 +707,26 @@ export const arayashikiSynergies = pgTable("arayashiki_synergies", {
 
 export type ArayashikiSynergy = typeof arayashikiSynergies.$inferSelect;
 export type InsertArayashikiSynergy = typeof arayashikiSynergies.$inferInsert;
+
+/**
+ * Custom Messages - Mensagens personalizadas agendadas para GvG
+ */
+export const customMessages = pgTable("customMessages", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  content: text("content").notNull(),
+  scheduleTime: varchar("scheduleTime", { length: 5 }).notNull(), // HH:mm
+  daysOfWeek: varchar("daysOfWeek", { length: 50 }), // JSON array: [0,1,2,3,4,5,6] ou null para todos os dias
+  isActive: boolean("isActive").default(true).notNull(),
+  sendToTelegram: boolean("sendToTelegram").default(true).notNull(),
+  sendToWhatsApp: boolean("sendToWhatsApp").default(true).notNull(),
+  telegramGroupId: varchar("telegramGroupId", { length: 100 }),
+  whatsappGroupId: varchar("whatsappGroupId", { length: 100 }),
+  lastSentAt: timestamp("lastSentAt"),
+  createdBy: integer("createdBy").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type CustomMessage = typeof customMessages.$inferSelect;
+export type InsertCustomMessage = typeof customMessages.$inferInsert;

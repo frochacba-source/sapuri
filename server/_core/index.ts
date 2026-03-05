@@ -12,6 +12,7 @@ import { initializeBotHealthCheck } from "./botHealthCheck";
 import { startAutoSave } from "../autoSave";
 import accountsRoutes from "../accountsRoutes";
 import whatsappRoutes from "../whatsapp-routes";
+import * as customMessagesScheduler from "../modules/customMessagesScheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -106,6 +107,14 @@ async function startServer() {
     
     // WhatsApp ATIVADO - Baileys
     console.log('[WhatsApp] ✅ Integração WhatsApp ativa via Baileys');
+    
+    // Iniciar scheduler de mensagens personalizadas
+    try {
+      await customMessagesScheduler.startScheduler();
+      console.log('[Custom Messages] ✅ Scheduler de mensagens personalizadas iniciado');
+    } catch (e) {
+      console.warn('[Custom Messages] ⚠️ Scheduler não iniciado:', e);
+    }
   });
 }
 
