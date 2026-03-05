@@ -5181,6 +5181,8 @@ import path2 from "path";
 import FormData from "form-data";
 
 // server/whatsapp-web-client.ts
+init_db();
+init_schema();
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
@@ -5191,6 +5193,7 @@ import * as qrcode from "qrcode";
 import * as fs from "fs";
 import * as path from "path";
 import pino from "pino";
+import { desc as desc2, sql as sql3 } from "drizzle-orm";
 var SESSIONS_DIR = path.join(process.cwd(), "server", "whatsapp-sessions");
 var socket = null;
 var qrCodeBase64 = null;
@@ -5198,6 +5201,216 @@ var connectionStatus = "disconnected";
 var isConnecting = false;
 var messageHistory = [];
 var logger = pino({ level: "silent" });
+var MAX_STRATEGIES_PER_RESPONSE = 5;
+async function searchGvgStrategies2(searchTerm) {
+  const db = await getDb();
+  if (!db) {
+    console.log("[WhatsApp Bot] Banco de dados n\xE3o dispon\xEDvel");
+    return [];
+  }
+  try {
+    let strategies;
+    if (searchTerm && searchTerm.trim()) {
+      strategies = await db.select().from(gvgStrategies).where(sql3`LOWER(${gvgStrategies.name}) LIKE ${`%${searchTerm.toLowerCase()}%`}`).orderBy(desc2(gvgStrategies.usageCount)).limit(MAX_STRATEGIES_PER_RESPONSE);
+    } else {
+      strategies = await db.select().from(gvgStrategies).orderBy(desc2(gvgStrategies.usageCount)).limit(MAX_STRATEGIES_PER_RESPONSE);
+    }
+    console.log(`[WhatsApp Bot] Encontradas ${strategies.length} estrat\xE9gias GvG`);
+    return strategies;
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar estrat\xE9gias GvG:", error);
+    return [];
+  }
+}
+async function searchGotStrategies2(searchTerm) {
+  const db = await getDb();
+  if (!db) {
+    console.log("[WhatsApp Bot] Banco de dados n\xE3o dispon\xEDvel");
+    return [];
+  }
+  try {
+    let strategies;
+    if (searchTerm && searchTerm.trim()) {
+      strategies = await db.select().from(gotStrategies).where(sql3`LOWER(${gotStrategies.name}) LIKE ${`%${searchTerm.toLowerCase()}%`} OR LOWER(${gotStrategies.observation}) LIKE ${`%${searchTerm.toLowerCase()}%`}`).orderBy(desc2(gotStrategies.usageCount)).limit(MAX_STRATEGIES_PER_RESPONSE);
+    } else {
+      strategies = await db.select().from(gotStrategies).orderBy(desc2(gotStrategies.usageCount)).limit(MAX_STRATEGIES_PER_RESPONSE);
+    }
+    console.log(`[WhatsApp Bot] Encontradas ${strategies.length} estrat\xE9gias GoT`);
+    return strategies;
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar estrat\xE9gias GoT:", error);
+    return [];
+  }
+}
+function formatGvgStrategy(strategy) {
+  const name = strategy.name || `Estrat\xE9gia #${strategy.id}`;
+  return `
+\u{1F5E1}\uFE0F *${name}*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+\u2694\uFE0F *ATAQUE (5v5):*
+\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+\u2502 ${strategy.attackFormation1}
+\u2502 ${strategy.attackFormation2}
+\u2502 ${strategy.attackFormation3}
+\u2502 ${strategy.attackFormation4}
+\u2502 ${strategy.attackFormation5}
+\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+
+\u{1F6E1}\uFE0F *DEFESA (5v5):*
+\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+\u2502 ${strategy.defenseFormation1}
+\u2502 ${strategy.defenseFormation2}
+\u2502 ${strategy.defenseFormation3}
+\u2502 ${strategy.defenseFormation4}
+\u2502 ${strategy.defenseFormation5}
+\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+
+\u{1F4CA} _Usos: ${strategy.usageCount}_
+`;
+}
+function formatGotStrategy(strategy) {
+  const name = strategy.name || `Estrat\xE9gia #${strategy.id}`;
+  const observation = strategy.observation ? `
+\u{1F4DD} _${strategy.observation}_` : "";
+  return `
+\u2694\uFE0F *${name}*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+\u{1F534} *ATAQUE (3x3):*
+\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+\u2502 ${strategy.attackFormation1}
+\u2502 ${strategy.attackFormation2}
+\u2502 ${strategy.attackFormation3}
+\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+
+\u{1F535} *DEFESA (3x3):*
+\u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510
+\u2502 ${strategy.defenseFormation1}
+\u2502 ${strategy.defenseFormation2}
+\u2502 ${strategy.defenseFormation3}
+\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518
+
+\u{1F4CA} _Usos: ${strategy.usageCount}_${observation}
+`;
+}
+function getHelpMessage() {
+  return `
+\u{1F916} *BOT SAPURI - COMANDOS*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+\u{1F4CB} *Comandos Dispon\xEDveis:*
+
+/help ou /ajuda
+\u21B3 Lista todos os comandos
+
+/estrategias
+\u21B3 Lista tipos de estrat\xE9gias dispon\xEDveis
+
+/gvg
+\u21B3 Mostra as 5 estrat\xE9gias GvG mais usadas
+
+/gvg [busca]
+\u21B3 Busca estrat\xE9gia GvG por nome
+\u21B3 Ex: /gvg cavalaria
+
+/got
+\u21B3 Mostra as 5 estrat\xE9gias GoT mais usadas
+
+/got [busca]
+\u21B3 Busca estrat\xE9gia GoT por nome
+\u21B3 Ex: /got defesa forte
+
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+_Sistema Sapuri v1.0_
+`;
+}
+function getStrategiesTypesMessage() {
+  return `
+\u{1F4DA} *TIPOS DE ESTRAT\xC9GIAS*
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+\u{1F5E1}\uFE0F *GvG (Guerra de Guildas)*
+\u2022 Forma\xE7\xE3o 5v5
+\u2022 Use: /gvg
+
+\u2694\uFE0F *GoT (Guerra de Tit\xE3s)*
+\u2022 Forma\xE7\xE3o 3x3
+\u2022 Use: /got
+
+\u{1F4A1} _Dica: Adicione uma palavra para buscar_
+_Ex: /gvg cavalaria_
+`;
+}
+async function processCommand(command) {
+  const trimmed = command.trim().toLowerCase();
+  if (!trimmed.startsWith("/")) {
+    return null;
+  }
+  const parts = trimmed.split(/\s+/);
+  const cmd = parts[0];
+  const searchTerm = parts.slice(1).join(" ");
+  console.log(`[WhatsApp Bot] Processando comando: ${cmd}, termo: "${searchTerm}"`);
+  switch (cmd) {
+    case "/help":
+    case "/ajuda":
+      return getHelpMessage();
+    case "/estrategias":
+    case "/estrat\xE9gias":
+      return getStrategiesTypesMessage();
+    case "/gvg": {
+      const strategies = await searchGvgStrategies2(searchTerm || void 0);
+      if (strategies.length === 0) {
+        return searchTerm ? `\u274C Nenhuma estrat\xE9gia GvG encontrada para "${searchTerm}"
+
+_Tente outro termo ou use /gvg para ver as mais usadas._` : "\u274C Nenhuma estrat\xE9gia GvG cadastrada no sistema.";
+      }
+      const header = searchTerm ? `\u{1F50D} *Resultados para "${searchTerm}":*
+` : `\u{1F4CA} *Top ${strategies.length} Estrat\xE9gias GvG:*
+`;
+      const formatted = strategies.map(formatGvgStrategy).join("\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n");
+      return header + formatted;
+    }
+    case "/got": {
+      const strategies = await searchGotStrategies2(searchTerm || void 0);
+      if (strategies.length === 0) {
+        return searchTerm ? `\u274C Nenhuma estrat\xE9gia GoT encontrada para "${searchTerm}"
+
+_Tente outro termo ou use /got para ver as mais usadas._` : "\u274C Nenhuma estrat\xE9gia GoT cadastrada no sistema.";
+      }
+      const header = searchTerm ? `\u{1F50D} *Resultados para "${searchTerm}":*
+` : `\u{1F4CA} *Top ${strategies.length} Estrat\xE9gias GoT:*
+`;
+      const formatted = strategies.map(formatGotStrategy).join("\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n");
+      return header + formatted;
+    }
+    default:
+      return null;
+  }
+}
+async function handleIncomingMessage(message) {
+  try {
+    if (message.key.fromMe) {
+      return;
+    }
+    const text2 = message.message?.conversation || message.message?.extendedTextMessage?.text || "";
+    if (!text2 || !text2.trim()) {
+      return;
+    }
+    const remoteJid = message.key.remoteJid;
+    const isGroup = remoteJid?.endsWith("@g.us");
+    const sender = message.key.participant || message.key.remoteJid;
+    console.log(`[WhatsApp Bot] Mensagem recebida de ${isGroup ? "grupo" : "privado"}: ${text2.substring(0, 50)}`);
+    const response = await processCommand(text2);
+    if (response && socket) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await socket.sendMessage(remoteJid, { text: response });
+      console.log(`[WhatsApp Bot] Resposta enviada para ${remoteJid}`);
+    }
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao processar mensagem:", error);
+  }
+}
 function ensureSessionsDir() {
   if (!fs.existsSync(SESSIONS_DIR)) {
     fs.mkdirSync(SESSIONS_DIR, { recursive: true });
@@ -5281,9 +5494,12 @@ async function connectWhatsApp() {
       }
     });
     socket.ev.on("creds.update", saveCreds);
-    socket.ev.on("messages.upsert", (msg) => {
+    socket.ev.on("messages.upsert", async (msg) => {
       if (msg.type === "notify") {
-        console.log("[WhatsApp] Mensagem recebida:", msg.messages[0]?.key?.remoteJid);
+        for (const message of msg.messages) {
+          console.log("[WhatsApp] Mensagem recebida:", message.key?.remoteJid);
+          await handleIncomingMessage(message);
+        }
       }
     });
     return true;
@@ -5386,7 +5602,8 @@ async function checkWhatsAppNumber(phoneNumber) {
   }
   try {
     const jid = formatPhoneNumber(phoneNumber);
-    const [result] = await socket.onWhatsApp(jid.replace("@s.whatsapp.net", ""));
+    const results = await socket.onWhatsApp(jid.replace("@s.whatsapp.net", ""));
+    const result = results?.[0];
     return result?.exists ?? false;
   } catch (error) {
     console.error("[WhatsApp] Erro ao verificar n\xFAmero:", error);
