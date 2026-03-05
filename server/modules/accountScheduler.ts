@@ -3,12 +3,16 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import FormData from 'form-data';
+import { toZonedTime } from 'date-fns-tz';
 import { 
   sendWhatsAppGroupMessage, 
   sendWhatsAppGroupImage,
   getWhatsAppGroups, 
   getWhatsAppStatus 
 } from '../whatsapp-web-client';
+
+// Timezone de Brasília
+const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
 
 interface Account {
   id: string;
@@ -30,6 +34,10 @@ interface SchedulerState {
   task: any | null;
   sendToWhatsApp: boolean; // Nova flag para envio WhatsApp
   selectedGroups: string[]; // Grupos selecionados para envio
+  // Configuração de horário de envio
+  sendStartHour: number;    // 0-23 (padrão: 8)
+  sendEndHour: number;      // 0-23 (padrão: 22)
+  timezone: string;         // Fuso horário (padrão: America/Sao_Paulo)
 }
 
 const ACCOUNTS_FILE = path.join(process.cwd(), 'server/data/contas.json');
@@ -44,12 +52,19 @@ let schedulerState: SchedulerState = {
   task: null,
   sendToWhatsApp: true, // Envia também para WhatsApp por padrão
   selectedGroups: [], // Vazio = envia para todos
+  sendStartHour: 8,   // Padrão: 8h
+  sendEndHour: 22,    // Padrão: 22h
+  timezone: BRAZIL_TIMEZONE,
 };
 
 // Interface para configuração persistente
 interface AccountsConfig {
   selectedGroups: string[];
   sendToWhatsApp: boolean;
+  // Configuração de horário de envio
+  sendStartHour?: number; // 0-23
+  sendEndHour?: number;   // 0-23
+  timezone?: string;      // Default: America/Sao_Paulo
 }
 
 // Carregar configuração de grupos do arquivo
@@ -63,7 +78,13 @@ function loadConfig(): AccountsConfig {
   } catch (error) {
     console.error('Erro ao carregar config:', error);
   }
-  return { selectedGroups: [], sendToWhatsApp: true };
+  return { 
+    selectedGroups: [], 
+    sendToWhatsApp: true,
+    sendStartHour: 8,
+    sendEndHour: 22,
+    timezone: BRAZIL_TIMEZONE
+  };
 }
 
 // Salvar configuração de grupos no arquivo
@@ -77,6 +98,9 @@ function saveConfig(config: AccountsConfig) {
   const config = loadConfig();
   schedulerState.selectedGroups = config.selectedGroups || [];
   schedulerState.sendToWhatsApp = config.sendToWhatsApp !== false;
+  schedulerState.sendStartHour = config.sendStartHour ?? 8;
+  schedulerState.sendEndHour = config.sendEndHour ?? 22;
+  schedulerState.timezone = config.timezone || BRAZIL_TIMEZONE;
 })();
 
 // Garantir que o diretório de dados existe
@@ -85,6 +109,89 @@ function ensureDataDir() {
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
+}
+
+// Verificar se está dentro do horário de envio configurado
+function isWithinSendingHours(): { allowed: boolean; currentHour: number; message: string } {
+  const { sendStartHour, sendEndHour, timezone } = schedulerState;
+  
+  // Se horários não configurados (undefined/null), permitir sempre
+  if (sendStartHour === undefined || sendEndHour === undefined) {
+    return { allowed: true, currentHour: 0, message: 'Horário não configurado - envio permitido' };
+  }
+  
+  // Se startHour === endHour, desabilita envio automático
+  if (sendStartHour === sendEndHour) {
+    return { allowed: false, currentHour: 0, message: 'Envio automático desabilitado (horário início = fim)' };
+  }
+  
+  // Obter hora atual no fuso horário de Brasília
+  const now = new Date();
+  const zonedDate = toZonedTime(now, timezone);
+  const currentHour = zonedDate.getHours();
+  
+  // Verificar se horário cruza meia-noite (ex: 22h às 6h)
+  let allowed: boolean;
+  if (sendStartHour < sendEndHour) {
+    // Horário normal (ex: 8h às 22h)
+    allowed = currentHour >= sendStartHour && currentHour < sendEndHour;
+  } else {
+    // Horário que cruza meia-noite (ex: 22h às 6h)
+    allowed = currentHour >= sendStartHour || currentHour < sendEndHour;
+  }
+  
+  const message = allowed 
+    ? `Dentro do horário de envio (${sendStartHour}h-${sendEndHour}h, atual: ${currentHour}h)`
+    : `Fora do horário de envio (${sendStartHour}h-${sendEndHour}h, atual: ${currentHour}h)`;
+  
+  return { allowed, currentHour, message };
+}
+
+// Obter status do horário de envio
+function getSendingHoursStatus(): {
+  sendStartHour: number;
+  sendEndHour: number;
+  timezone: string;
+  currentHour: number;
+  isWithinHours: boolean;
+  statusMessage: string;
+} {
+  const { allowed, currentHour, message } = isWithinSendingHours();
+  return {
+    sendStartHour: schedulerState.sendStartHour,
+    sendEndHour: schedulerState.sendEndHour,
+    timezone: schedulerState.timezone,
+    currentHour,
+    isWithinHours: allowed,
+    statusMessage: message
+  };
+}
+
+// Configurar horário de envio
+function setSendingHours(startHour: number, endHour: number): { success: boolean; message: string } {
+  // Validar valores
+  if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23) {
+    return { success: false, message: 'Hora deve estar entre 0 e 23' };
+  }
+  
+  schedulerState.sendStartHour = startHour;
+  schedulerState.sendEndHour = endHour;
+  
+  // Salvar configuração
+  saveConfig({
+    selectedGroups: schedulerState.selectedGroups,
+    sendToWhatsApp: schedulerState.sendToWhatsApp,
+    sendStartHour: startHour,
+    sendEndHour: endHour,
+    timezone: schedulerState.timezone
+  });
+  
+  const message = startHour === endHour 
+    ? 'Envio automático desabilitado (horário início = fim)'
+    : `Horário de envio configurado: ${startHour}h às ${endHour}h (Brasília)`;
+  
+  console.log(`[Scheduler] ${message}`);
+  return { success: true, message };
 }
 
 // Carregar contas do arquivo JSON
@@ -333,6 +440,13 @@ ${account.description}
 
 // Executar ciclo de reenvio
 async function runSchedulerCycle() {
+  // Verificar se está dentro do horário de envio
+  const hoursCheck = isWithinSendingHours();
+  if (!hoursCheck.allowed) {
+    console.log(`[Scheduler] ${hoursCheck.message} - pulando envio automático`);
+    return;
+  }
+  
   const accounts = loadAccounts();
 
   if (accounts.length === 0) {
@@ -340,7 +454,7 @@ async function runSchedulerCycle() {
     return;
   }
 
-  console.log(`[Scheduler] Iniciando envio de ${accounts.length} contas`);
+  console.log(`[Scheduler] Iniciando envio de ${accounts.length} contas (${hoursCheck.message})`);
 
   for (const account of accounts) {
     try {
@@ -404,11 +518,19 @@ function stopScheduler() {
 
 // Obter status do scheduler
 function getSchedulerStatus() {
+  const hoursStatus = getSendingHoursStatus();
   return {
     isRunning: schedulerState.isRunning,
     intervalMinutes: schedulerState.intervalMinutes,
     sendToWhatsApp: schedulerState.sendToWhatsApp,
     selectedGroups: schedulerState.selectedGroups,
+    // Status do horário de envio
+    sendStartHour: hoursStatus.sendStartHour,
+    sendEndHour: hoursStatus.sendEndHour,
+    timezone: hoursStatus.timezone,
+    currentHour: hoursStatus.currentHour,
+    isWithinSendingHours: hoursStatus.isWithinHours,
+    sendingHoursMessage: hoursStatus.statusMessage,
   };
 }
 
@@ -585,4 +707,8 @@ export {
   sendAccountToTelegram,
   sendAccountToWhatsApp,
   sendAccountToWhatsAppGroup,
+  // Funções de horário de envio
+  setSendingHours,
+  getSendingHoursStatus,
+  isWithinSendingHours,
 };

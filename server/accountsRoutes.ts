@@ -286,4 +286,43 @@ router.post('/accounts/:id/send-whatsapp-groups', async (req, res) => {
   }
 });
 
+// POST /api/accounts/schedule-hours - Configurar horário de envio automático
+router.post('/accounts/schedule-hours', (req, res) => {
+  try {
+    const { startHour, endHour } = req.body;
+    
+    // Validar entrada
+    if (typeof startHour !== 'number' || typeof endHour !== 'number') {
+      return res.status(400).json({ error: 'startHour e endHour devem ser números' });
+    }
+    
+    const result = accountScheduler.setSendingHours(startHour, endHour);
+    
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: result.message,
+        startHour,
+        endHour
+      });
+    } else {
+      res.status(400).json({ error: result.message });
+    }
+  } catch (error) {
+    console.error('Erro ao configurar horário:', error);
+    res.status(500).json({ error: 'Erro ao configurar horário de envio' });
+  }
+});
+
+// GET /api/accounts/schedule-hours - Obter configuração atual de horário
+router.get('/accounts/schedule-hours', (_req, res) => {
+  try {
+    const status = accountScheduler.getSendingHoursStatus();
+    res.json(status);
+  } catch (error) {
+    console.error('Erro ao obter horário:', error);
+    res.status(500).json({ error: 'Erro ao obter configuração de horário' });
+  }
+});
+
 export default router;

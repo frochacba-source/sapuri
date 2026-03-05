@@ -27,7 +27,10 @@ import {
   Mail,
   FileText,
   Info,
-  Eye
+  Eye,
+  Clock,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 interface Account {
@@ -49,6 +52,13 @@ interface SchedulerStatus {
   intervalMinutes: number;
   sendToWhatsApp: boolean;
   selectedGroups: string[];
+  // Configuração de horário
+  sendStartHour?: number;
+  sendEndHour?: number;
+  timezone?: string;
+  currentHour?: number;
+  isWithinSendingHours?: boolean;
+  sendingHoursMessage?: string;
 }
 
 interface WhatsAppGroup {
@@ -65,7 +75,17 @@ export default function AccountsPanel() {
     intervalMinutes: 60,
     sendToWhatsApp: true,
     selectedGroups: [],
+    sendStartHour: 8,
+    sendEndHour: 22,
+    timezone: 'America/Sao_Paulo',
   });
+  
+  // Estado para formulário de horário
+  const [scheduleHoursForm, setScheduleHoursForm] = useState({
+    startHour: 8,
+    endHour: 22,
+  });
+  const [savingHours, setSavingHours] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | 'info'>('info');
@@ -151,9 +171,54 @@ export default function AccountsPanel() {
         const data = await response.json();
         setSchedulerStatus(data);
         setSelectedGroupIds(data.selectedGroups || []);
+        // Atualizar formulário de horário com valores salvos
+        setScheduleHoursForm({
+          startHour: data.sendStartHour ?? 8,
+          endHour: data.sendEndHour ?? 22,
+        });
       }
     } catch (error) {
       console.error('Erro ao carregar status do scheduler:', error);
+    }
+  };
+  
+  // Salvar configuração de horário
+  const handleSaveScheduleHours = async () => {
+    setSavingHours(true);
+    try {
+      // Validar horários
+      if (scheduleHoursForm.startHour === scheduleHoursForm.endHour) {
+        const confirm = window.confirm(
+          'Se o horário de início for igual ao de fim, os envios automáticos serão DESABILITADOS. Deseja continuar?'
+        );
+        if (!confirm) {
+          setSavingHours(false);
+          return;
+        }
+      }
+      
+      const response = await fetch('/api/accounts/schedule-hours', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startHour: scheduleHoursForm.startHour,
+          endHour: scheduleHoursForm.endHour,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        showMessage(data.message || 'Horário salvo com sucesso!', 'success');
+        loadSchedulerStatus(); // Recarregar status
+      } else {
+        const error = await response.json();
+        showMessage(error.error || 'Erro ao salvar horário', 'error');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar horário:', error);
+      showMessage('Erro ao salvar horário', 'error');
+    } finally {
+      setSavingHours(false);
     }
   };
 
@@ -718,6 +783,116 @@ export default function AccountsPanel() {
               <p className="text-xs text-gray-500 mt-1">
                 Mínimo 5 minutos. O scheduler reenviará todas as contas no intervalo configurado.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Configuração de Horário de Envio */}
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-amber-400" />
+              Horário de Envio Automático
+            </CardTitle>
+            <CardDescription>Configure o período em que os anúncios automáticos serão enviados (Horário de Brasília)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Status do Horário */}
+            <div className={`p-3 rounded-lg border ${
+              schedulerStatus.isWithinSendingHours 
+                ? 'bg-green-500/10 border-green-500/30' 
+                : 'bg-red-500/10 border-red-500/30'
+            }`}>
+              <div className="flex items-center gap-2">
+                {schedulerStatus.isWithinSendingHours ? (
+                  <>
+                    <Sun className="w-5 h-5 text-green-400" />
+                    <span className="text-green-400 font-medium">Dentro do horário de envio</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-5 h-5 text-red-400" />
+                    <span className="text-red-400 font-medium">Fora do horário de envio</span>
+                  </>
+                )}
+              </div>
+              <p className="text-sm text-gray-400 mt-1">
+                Configurado: {schedulerStatus.sendStartHour?.toString().padStart(2, '0') || '08'}:00 às {schedulerStatus.sendEndHour?.toString().padStart(2, '0') || '22'}:00 
+                {' '}| Hora atual em Brasília: {schedulerStatus.currentHour?.toString().padStart(2, '0') || '--'}:00
+              </p>
+            </div>
+
+            {/* Formulário de Horário */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 flex items-center gap-1">
+                  <Sun className="w-4 h-4 text-amber-400" />
+                  Hora de Início
+                </label>
+                <select
+                  value={scheduleHoursForm.startHour}
+                  onChange={(e) => setScheduleHoursForm({
+                    ...scheduleHoursForm,
+                    startHour: parseInt(e.target.value)
+                  })}
+                  className="w-full h-10 px-3 rounded-md bg-gray-800 border border-gray-700 text-white"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>
+                      {i.toString().padStart(2, '0')}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 flex items-center gap-1">
+                  <Moon className="w-4 h-4 text-blue-400" />
+                  Hora de Fim
+                </label>
+                <select
+                  value={scheduleHoursForm.endHour}
+                  onChange={(e) => setScheduleHoursForm({
+                    ...scheduleHoursForm,
+                    endHour: parseInt(e.target.value)
+                  })}
+                  className="w-full h-10 px-3 rounded-md bg-gray-800 border border-gray-700 text-white"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>
+                      {i.toString().padStart(2, '0')}:00
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Aviso sobre horário igual */}
+            {scheduleHoursForm.startHour === scheduleHoursForm.endHour && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <p className="text-amber-400 text-sm flex items-center gap-2">
+                  <Info className="w-4 h-4" />
+                  Horário de início igual ao fim desabilita o envio automático
+                </p>
+              </div>
+            )}
+
+            {/* Info e Botão Salvar */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-500">
+                🌎 Horário de Brasília (GMT-3) • Horário que cruza meia-noite é suportado (ex: 22h às 6h)
+              </p>
+              <Button
+                onClick={handleSaveScheduleHours}
+                disabled={savingHours}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {savingHours ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Salvar Horário
+              </Button>
             </div>
           </CardContent>
         </Card>

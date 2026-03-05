@@ -1,4 +1,7 @@
 {
   "selectedGroups": [],
-  "sendToWhatsApp": true
+  "sendToWhatsApp": true,
+  "sendStartHour": 8,
+  "sendEndHour": 22,
+  "timezone": "America/Sao_Paulo"
 }
