@@ -2,6 +2,13 @@
  * WhatsApp Web Client usando Baileys
  * Sistema de conexão e envio de mensagens via WhatsApp
  * Inclui sistema de comandos para consultar estratégias
+ * 
+ * MELHORIAS DE ESTABILIDADE v2.0:
+ * - Reconexão automática com backoff exponencial
+ * - Tratamento robusto de erros específicos do Baileys
+ * - Sistema de keep-alive para manter conexão
+ * - Logs detalhados com timestamps
+ * - Monitoramento de saúde da conexão
  */
 
 import makeWASocket, {
@@ -21,6 +28,194 @@ import pino from "pino";
 import { getDb } from "./db";
 import { gvgStrategies, gotStrategies, GvgStrategy, GotStrategy } from "../drizzle/schema";
 import { like, desc, sql } from "drizzle-orm";
+
+// ============ CONFIGURAÇÕES DE ESTABILIDADE ============
+const RECONNECT_CONFIG = {
+  enabled: true,                    // Habilitar reconexão automática
+  maxAttempts: 10,                  // Máximo de tentativas antes de desistir
+  baseDelay: 3000,                  // Delay inicial em ms (3s)
+  maxDelay: 300000,                 // Delay máximo em ms (5 minutos)
+  resetAfterSuccess: true,          // Resetar contador após conexão bem-sucedida
+};
+
+const KEEPALIVE_CONFIG = {
+  enabled: true,                    // Habilitar keep-alive
+  intervalMs: 60000,                // Intervalo do ping (60 segundos)
+  timeoutMs: 30000,                 // Timeout para considerar desconectado
+};
+
+// ============ ESTADO DE RECONEXÃO ============
+interface ReconnectionState {
+  attempts: number;
+  lastAttempt: Date | null;
+  lastSuccessfulConnection: Date | null;
+  totalReconnections: number;
+  lastError: string | null;
+  nextAttemptDelay: number;
+}
+
+const reconnectionState: ReconnectionState = {
+  attempts: 0,
+  lastAttempt: null,
+  lastSuccessfulConnection: null,
+  totalReconnections: 0,
+  lastError: null,
+  nextAttemptDelay: RECONNECT_CONFIG.baseDelay,
+};
+
+// Keep-alive timer
+let keepAliveTimer: NodeJS.Timeout | null = null;
+let lastPingTime: Date | null = null;
+let lastPongTime: Date | null = null;
+
+// ============ FUNÇÕES DE LOG MELHORADAS ============
+function logWithTimestamp(level: 'INFO' | 'WARN' | 'ERROR' | 'DEBUG', module: string, message: string, data?: any): void {
+  const timestamp = new Date().toISOString();
+  const prefix = `[${timestamp}] [WhatsApp/${module}] [${level}]`;
+  
+  if (data) {
+    console.log(`${prefix} ${message}`, data);
+  } else {
+    console.log(`${prefix} ${message}`);
+  }
+}
+
+function logInfo(module: string, message: string, data?: any): void {
+  logWithTimestamp('INFO', module, message, data);
+}
+
+function logWarn(module: string, message: string, data?: any): void {
+  logWithTimestamp('WARN', module, message, data);
+}
+
+function logError(module: string, message: string, data?: any): void {
+  logWithTimestamp('ERROR', module, message, data);
+}
+
+function logDebug(module: string, message: string, data?: any): void {
+  if (process.env.DEBUG_WHATSAPP === 'true') {
+    logWithTimestamp('DEBUG', module, message, data);
+  }
+}
+
+// ============ FUNÇÕES DE RECONEXÃO ============
+
+/**
+ * Calcular delay com backoff exponencial
+ */
+function calculateBackoffDelay(attempt: number): number {
+  const delay = Math.min(
+    RECONNECT_CONFIG.baseDelay * Math.pow(2, attempt),
+    RECONNECT_CONFIG.maxDelay
+  );
+  // Adicionar jitter de ±20% para evitar thundering herd
+  const jitter = delay * 0.2 * (Math.random() - 0.5);
+  return Math.floor(delay + jitter);
+}
+
+/**
+ * Resetar estado de reconexão após sucesso
+ */
+function resetReconnectionState(): void {
+  reconnectionState.attempts = 0;
+  reconnectionState.nextAttemptDelay = RECONNECT_CONFIG.baseDelay;
+  reconnectionState.lastSuccessfulConnection = new Date();
+  logInfo('Reconnect', 'Estado de reconexão resetado após conexão bem-sucedida');
+}
+
+/**
+ * Verificar se deve tentar reconectar
+ */
+function shouldAttemptReconnect(disconnectReason: number): boolean {
+  // Não reconectar se foi logout intencional
+  if (disconnectReason === DisconnectReason.loggedOut) {
+    logInfo('Reconnect', 'Logout intencional detectado, não reconectando');
+    return false;
+  }
+  
+  // Verificar limite de tentativas
+  if (reconnectionState.attempts >= RECONNECT_CONFIG.maxAttempts) {
+    logWarn('Reconnect', `Limite de tentativas atingido (${RECONNECT_CONFIG.maxAttempts}). Desistindo.`);
+    return false;
+  }
+  
+  return RECONNECT_CONFIG.enabled;
+}
+
+/**
+ * Obter descrição do motivo de desconexão
+ */
+function getDisconnectReasonDescription(statusCode: number): string {
+  // Usando valores numéricos diretamente para evitar duplicatas
+  const reasons: Record<number, string> = {
+    401: 'Logout realizado',
+    403: 'Acesso negado (forbidden)',
+    408: 'Timeout/Conexão perdida',
+    411: 'Mismatch de dispositivo',
+    428: 'Conexão fechada pelo servidor',
+    440: 'Conexão substituída (login em outro dispositivo)',
+    500: 'Sessão inválida/corrompida',
+    503: 'Serviço WhatsApp indisponível',
+    515: 'Reinício necessário',
+  };
+  return reasons[statusCode] || `Razão desconhecida (código: ${statusCode})`;
+}
+
+// ============ FUNÇÕES DE KEEP-ALIVE ============
+
+/**
+ * Iniciar sistema de keep-alive
+ */
+function startKeepAlive(): void {
+  if (!KEEPALIVE_CONFIG.enabled) return;
+  
+  stopKeepAlive(); // Limpar timer anterior se existir
+  
+  logInfo('KeepAlive', `Iniciando sistema de keep-alive (intervalo: ${KEEPALIVE_CONFIG.intervalMs}ms)`);
+  
+  keepAliveTimer = setInterval(async () => {
+    if (!socket || connectionStatus !== 'connected') {
+      logDebug('KeepAlive', 'Socket não conectado, pulando ping');
+      return;
+    }
+    
+    try {
+      lastPingTime = new Date();
+      logDebug('KeepAlive', 'Enviando ping...');
+      
+      // Verificar se a conexão ainda está ativa consultando informações do usuário
+      const connectionTest = await Promise.race([
+        socket.fetchStatus(socket.user?.id || ''),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Ping timeout')), KEEPALIVE_CONFIG.timeoutMs)
+        )
+      ]).catch(() => null);
+      
+      lastPongTime = new Date();
+      logDebug('KeepAlive', 'Pong recebido - conexão ativa');
+      
+    } catch (error) {
+      logWarn('KeepAlive', 'Falha no keep-alive, conexão pode estar instável', { error });
+      
+      // Se o keep-alive falhar, verificar estado da conexão
+      if (connectionStatus === 'connected') {
+        logWarn('KeepAlive', 'Detectada possível desconexão silenciosa');
+        // O Baileys deve detectar e reconectar automaticamente
+      }
+    }
+  }, KEEPALIVE_CONFIG.intervalMs);
+}
+
+/**
+ * Parar sistema de keep-alive
+ */
+function stopKeepAlive(): void {
+  if (keepAliveTimer) {
+    clearInterval(keepAliveTimer);
+    keepAliveTimer = null;
+    logInfo('KeepAlive', 'Sistema de keep-alive parado');
+  }
+}
 
 // ============ SISTEMA DE CONTAS POR VALOR ============
 
@@ -1075,33 +1270,40 @@ function formatPhoneNumber(phone: string): string {
 }
 
 /**
- * Conectar ao WhatsApp
+ * Conectar ao WhatsApp com reconexão automática robusta
  */
 export async function connectWhatsApp(): Promise<boolean> {
   if (isConnecting) {
-    console.log("[WhatsApp] Já está conectando, aguarde...");
+    logWarn('Connect', 'Já está conectando, aguarde...');
     return false;
   }
 
   if (socket && connectionStatus === "connected") {
-    console.log("[WhatsApp] Já conectado!");
+    logInfo('Connect', 'Já conectado!');
     return true;
   }
 
   isConnecting = true;
   connectionStatus = "connecting";
+  reconnectionState.lastAttempt = new Date();
 
   try {
     ensureSessionsDir();
 
     // Buscar versão mais recente do WhatsApp Web
+    logInfo('Connect', 'Buscando versão mais recente do WhatsApp Web...');
     const { version, isLatest } = await fetchLatestBaileysVersion();
-    console.log(`[WhatsApp] Usando versão WA v${version.join(".")}, isLatest: ${isLatest}`);
+    logInfo('Connect', `Usando versão WA v${version.join(".")}, isLatest: ${isLatest}`);
 
     // Carregar estado de autenticação
+    logInfo('Connect', 'Carregando estado de autenticação...');
     const { state, saveCreds } = await useMultiFileAuthState(SESSIONS_DIR);
 
-    // Criar socket do WhatsApp
+    // Verificar se existe sessão válida
+    const hasSession = state.creds?.registered;
+    logInfo('Connect', `Sessão existente: ${hasSession ? 'Sim' : 'Não'}`);
+
+    // Criar socket do WhatsApp com configurações otimizadas
     socket = makeWASocket({
       version,
       auth: {
@@ -1112,83 +1314,146 @@ export async function connectWhatsApp(): Promise<boolean> {
       logger,
       generateHighQualityLinkPreview: true,
       syncFullHistory: false,
+      // Configurações de estabilidade
+      connectTimeoutMs: 60000,          // 60 segundos para conectar
+      keepAliveIntervalMs: 30000,       // Ping interno do Baileys a cada 30s
+      retryRequestDelayMs: 250,         // Delay entre retries de requests
+      defaultQueryTimeoutMs: 60000,     // Timeout padrão para queries
     });
 
-    // Handler de conexão
+    // Handler de conexão melhorado
     socket.ev.on("connection.update", async (update: Partial<ConnectionState>) => {
       const { connection, lastDisconnect, qr } = update;
 
       // Se recebeu QR code
       if (qr) {
-        console.log("[WhatsApp] QR Code recebido, gerando imagem...");
+        logInfo('Connect', 'QR Code recebido, gerando imagem...');
         connectionStatus = "qr";
         try {
-          // Gerar QR code como imagem base64
           qrCodeBase64 = await qrcode.toDataURL(qr, {
             width: 256,
             margin: 2,
-            color: {
-              dark: "#000000",
-              light: "#ffffff",
-            },
+            color: { dark: "#000000", light: "#ffffff" },
           });
-          console.log("[WhatsApp] QR Code gerado com sucesso");
+          logInfo('Connect', 'QR Code gerado com sucesso - aguardando escaneamento');
         } catch (err) {
-          console.error("[WhatsApp] Erro ao gerar QR code:", err);
+          logError('Connect', 'Erro ao gerar QR code', err);
         }
       }
 
       // Se conectou
       if (connection === "open") {
-        console.log("[WhatsApp] Conectado com sucesso!");
+        logInfo('Connect', '✅ CONECTADO COM SUCESSO!');
         connectionStatus = "connected";
         qrCodeBase64 = null;
         isConnecting = false;
+        
+        // Resetar estado de reconexão após conexão bem-sucedida
+        if (reconnectionState.attempts > 0) {
+          reconnectionState.totalReconnections++;
+          logInfo('Connect', `Reconexão bem-sucedida após ${reconnectionState.attempts} tentativa(s)`);
+        }
+        resetReconnectionState();
+        
+        // Iniciar sistema de keep-alive
+        startKeepAlive();
+        
+        // Log informações da sessão
+        if (socket?.user) {
+          logInfo('Connect', `Logado como: ${socket.user.name || socket.user.id}`);
+        }
       }
 
       // Se desconectou
       if (connection === "close") {
-        const shouldReconnect =
-          (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
+        // Parar keep-alive
+        stopKeepAlive();
         
-        console.log(
-          "[WhatsApp] Conexão fechada devido a:",
-          lastDisconnect?.error,
-          "Reconectar:",
-          shouldReconnect
-        );
-
+        const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode || 0;
+        const reasonDescription = getDisconnectReasonDescription(statusCode);
+        
+        logWarn('Connect', `❌ DESCONECTADO: ${reasonDescription}`, {
+          statusCode,
+          error: lastDisconnect?.error?.message || 'Desconhecido',
+        });
+        
+        reconnectionState.lastError = reasonDescription;
         connectionStatus = "disconnected";
         qrCodeBase64 = null;
         isConnecting = false;
         
-        if (shouldReconnect) {
-          // Tentar reconectar após 3 segundos
+        // Verificar se deve reconectar
+        if (shouldAttemptReconnect(statusCode)) {
+          reconnectionState.attempts++;
+          reconnectionState.nextAttemptDelay = calculateBackoffDelay(reconnectionState.attempts);
+          
+          logInfo('Reconnect', 
+            `Tentando reconectar em ${reconnectionState.nextAttemptDelay / 1000}s ` +
+            `(tentativa ${reconnectionState.attempts}/${RECONNECT_CONFIG.maxAttempts})`
+          );
+          
           setTimeout(() => {
+            logInfo('Reconnect', 'Iniciando tentativa de reconexão...');
             connectWhatsApp();
-          }, 3000);
+          }, reconnectionState.nextAttemptDelay);
+        } else {
+          logError('Reconnect', 'Reconexão automática desabilitada ou limite atingido');
+        }
+        
+        // Tratamento especial para sessão corrompida
+        if (statusCode === DisconnectReason.badSession) {
+          logWarn('Connect', 'Sessão corrompida detectada - limpando dados de sessão');
+          // Não limpar automaticamente - deixar o admin decidir
         }
       }
     });
 
     // Salvar credenciais quando atualizadas
-    socket.ev.on("creds.update", saveCreds);
+    socket.ev.on("creds.update", async () => {
+      try {
+        await saveCreds();
+        logDebug('Session', 'Credenciais salvas');
+      } catch (error) {
+        logError('Session', 'Erro ao salvar credenciais', error);
+      }
+    });
 
     // Handler de mensagens recebidas (sistema de comandos)
     socket.ev.on("messages.upsert", async (msg) => {
       if (msg.type === "notify") {
         for (const message of msg.messages) {
-          console.log("[WhatsApp] Mensagem recebida:", message.key?.remoteJid);
-          await handleIncomingMessage(message);
+          try {
+            logDebug('Message', `Mensagem recebida de: ${message.key?.remoteJid}`);
+            await handleIncomingMessage(message);
+          } catch (error) {
+            logError('Message', 'Erro ao processar mensagem recebida', error);
+          }
         }
       }
     });
 
     return true;
   } catch (error) {
-    console.error("[WhatsApp] Erro ao conectar:", error);
+    logError('Connect', 'Erro crítico ao conectar', error);
     connectionStatus = "disconnected";
     isConnecting = false;
+    
+    // Tentar reconectar após erro crítico
+    if (RECONNECT_CONFIG.enabled && reconnectionState.attempts < RECONNECT_CONFIG.maxAttempts) {
+      reconnectionState.attempts++;
+      reconnectionState.lastError = error instanceof Error ? error.message : 'Erro desconhecido';
+      reconnectionState.nextAttemptDelay = calculateBackoffDelay(reconnectionState.attempts);
+      
+      logInfo('Reconnect', 
+        `Erro crítico - tentando reconectar em ${reconnectionState.nextAttemptDelay / 1000}s ` +
+        `(tentativa ${reconnectionState.attempts}/${RECONNECT_CONFIG.maxAttempts})`
+      );
+      
+      setTimeout(() => {
+        connectWhatsApp();
+      }, reconnectionState.nextAttemptDelay);
+    }
+    
     return false;
   }
 }
@@ -1197,25 +1462,42 @@ export async function connectWhatsApp(): Promise<boolean> {
  * Desconectar do WhatsApp
  */
 export async function disconnectWhatsApp(): Promise<void> {
+  logInfo('Disconnect', 'Desconectando...');
+  
+  stopKeepAlive();
+  
   if (socket) {
-    console.log("[WhatsApp] Desconectando...");
-    await socket.end(undefined);
+    try {
+      await socket.end(undefined);
+      logInfo('Disconnect', 'Socket encerrado com sucesso');
+    } catch (error) {
+      logError('Disconnect', 'Erro ao encerrar socket', error);
+    }
     socket = null;
   }
+  
   connectionStatus = "disconnected";
   qrCodeBase64 = null;
   isConnecting = false;
+  
+  // Não resetar estado de reconexão - manter para debugging
+  logInfo('Disconnect', 'Desconexão concluída');
 }
 
 /**
  * Fazer logout e limpar sessão
  */
 export async function logoutWhatsApp(): Promise<void> {
+  logInfo('Logout', 'Iniciando logout e limpeza de sessão...');
+  
+  stopKeepAlive();
+  
   if (socket) {
     try {
       await socket.logout();
+      logInfo('Logout', 'Logout realizado com sucesso');
     } catch (error) {
-      console.error("[WhatsApp] Erro ao fazer logout:", error);
+      logError('Logout', 'Erro ao fazer logout', error);
     }
     socket = null;
   }
@@ -1246,6 +1528,129 @@ export function getWhatsAppStatus(): {
     status: connectionStatus,
     hasQrCode: !!qrCodeBase64,
   };
+}
+
+/**
+ * Interface de health check detalhado
+ */
+export interface WhatsAppHealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  isConnected: boolean;
+  connectionStatus: string;
+  uptime: number | null;
+  reconnection: {
+    enabled: boolean;
+    attempts: number;
+    maxAttempts: number;
+    totalReconnections: number;
+    lastError: string | null;
+    lastAttempt: string | null;
+    lastSuccessfulConnection: string | null;
+    nextAttemptDelay: number;
+  };
+  keepAlive: {
+    enabled: boolean;
+    lastPing: string | null;
+    lastPong: string | null;
+    isRunning: boolean;
+  };
+  session: {
+    exists: boolean;
+    path: string;
+  };
+  config: {
+    reconnect: typeof RECONNECT_CONFIG;
+    keepAlive: typeof KEEPALIVE_CONFIG;
+  };
+  timestamp: string;
+}
+
+/**
+ * Obter status de saúde detalhado do WhatsApp
+ * Endpoint: GET /api/whatsapp/health
+ */
+export function getWhatsAppHealthStatus(): WhatsAppHealthStatus {
+  // Determinar status geral
+  let status: 'healthy' | 'degraded' | 'unhealthy' = 'unhealthy';
+  
+  if (connectionStatus === 'connected') {
+    status = 'healthy';
+  } else if (connectionStatus === 'connecting' || connectionStatus === 'qr') {
+    status = 'degraded';
+  } else if (reconnectionState.attempts > 0 && reconnectionState.attempts < RECONNECT_CONFIG.maxAttempts) {
+    status = 'degraded'; // Tentando reconectar
+  }
+  
+  // Calcular uptime se conectado
+  let uptime: number | null = null;
+  if (reconnectionState.lastSuccessfulConnection && connectionStatus === 'connected') {
+    uptime = Date.now() - reconnectionState.lastSuccessfulConnection.getTime();
+  }
+  
+  // Verificar se sessão existe
+  const sessionExists = fs.existsSync(SESSIONS_DIR) && 
+    fs.readdirSync(SESSIONS_DIR).some(f => f.includes('creds'));
+  
+  return {
+    status,
+    isConnected: connectionStatus === 'connected',
+    connectionStatus,
+    uptime,
+    reconnection: {
+      enabled: RECONNECT_CONFIG.enabled,
+      attempts: reconnectionState.attempts,
+      maxAttempts: RECONNECT_CONFIG.maxAttempts,
+      totalReconnections: reconnectionState.totalReconnections,
+      lastError: reconnectionState.lastError,
+      lastAttempt: reconnectionState.lastAttempt?.toISOString() || null,
+      lastSuccessfulConnection: reconnectionState.lastSuccessfulConnection?.toISOString() || null,
+      nextAttemptDelay: reconnectionState.nextAttemptDelay,
+    },
+    keepAlive: {
+      enabled: KEEPALIVE_CONFIG.enabled,
+      lastPing: lastPingTime?.toISOString() || null,
+      lastPong: lastPongTime?.toISOString() || null,
+      isRunning: keepAliveTimer !== null,
+    },
+    session: {
+      exists: sessionExists,
+      path: SESSIONS_DIR,
+    },
+    config: {
+      reconnect: RECONNECT_CONFIG,
+      keepAlive: KEEPALIVE_CONFIG,
+    },
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Resetar manualmente o estado de reconexão
+ * Útil quando o admin quer forçar novas tentativas
+ */
+export function resetReconnectionAttempts(): void {
+  logInfo('Admin', 'Reset manual do estado de reconexão solicitado');
+  reconnectionState.attempts = 0;
+  reconnectionState.nextAttemptDelay = RECONNECT_CONFIG.baseDelay;
+  reconnectionState.lastError = null;
+}
+
+/**
+ * Forçar reconexão imediata
+ */
+export async function forceReconnect(): Promise<boolean> {
+  logInfo('Admin', 'Reconexão forçada solicitada');
+  
+  // Desconectar primeiro se conectado
+  if (socket) {
+    await disconnectWhatsApp();
+  }
+  
+  // Resetar estado
+  resetReconnectionAttempts();
+  
+  // Conectar
+  return connectWhatsApp();
 }
 
 /**

@@ -11,6 +11,9 @@ import {
   getMessageHistory,
   getWhatsAppGroups,
   sendWhatsAppGroupMessage,
+  getWhatsAppHealthStatus,
+  resetReconnectionAttempts,
+  forceReconnect,
 } from './whatsapp-web-client';
 
 const router = Router();
@@ -281,6 +284,83 @@ router.post('/send-group-message', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Erro ao enviar mensagem para grupo',
+    });
+  }
+});
+
+/**
+ * GET /api/whatsapp/health
+ * Obter status de saúde detalhado do WhatsApp
+ * Inclui informações de reconexão, keep-alive, sessão, etc.
+ */
+router.get('/health', (req: Request, res: Response) => {
+  try {
+    const health = getWhatsAppHealthStatus();
+    
+    // Definir código HTTP baseado no status
+    const httpStatus = health.status === 'healthy' ? 200 : 
+                       health.status === 'degraded' ? 200 : 503;
+    
+    res.status(httpStatus).json({
+      success: true,
+      health,
+    });
+  } catch (error) {
+    console.error('[WhatsApp Routes] Erro ao obter health status:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao obter health status',
+      health: {
+        status: 'unhealthy',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      },
+    });
+  }
+});
+
+/**
+ * POST /api/whatsapp/reset-reconnection
+ * Resetar contador de reconexão para permitir novas tentativas
+ */
+router.post('/reset-reconnection', (req: Request, res: Response) => {
+  try {
+    resetReconnectionAttempts();
+    const health = getWhatsAppHealthStatus();
+    
+    res.json({
+      success: true,
+      message: 'Estado de reconexão resetado com sucesso',
+      health,
+    });
+  } catch (error) {
+    console.error('[WhatsApp Routes] Erro ao resetar reconexão:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao resetar reconexão',
+    });
+  }
+});
+
+/**
+ * POST /api/whatsapp/force-reconnect
+ * Forçar reconexão imediata do WhatsApp
+ */
+router.post('/force-reconnect', async (req: Request, res: Response) => {
+  try {
+    console.log('[WhatsApp Routes] Reconexão forçada solicitada...');
+    const success = await forceReconnect();
+    const health = getWhatsAppHealthStatus();
+    
+    res.json({
+      success,
+      message: success ? 'Reconexão iniciada com sucesso' : 'Falha ao iniciar reconexão',
+      health,
+    });
+  } catch (error) {
+    console.error('[WhatsApp Routes] Erro ao forçar reconexão:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Erro ao forçar reconexão',
     });
   }
 });
