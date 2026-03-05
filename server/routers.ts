@@ -31,6 +31,7 @@ import { arayashikiAnalysisRouter } from "./routers/arayashikiAnalysis";
 import { arayashikiSyncRouter } from "./routers/arayashikiSync";
 import { cardAnalysisRouter } from "./routers/cardAnalysis";
 import { accountsRouter } from "./routers/accounts";
+import { alertsRouter } from "./routers/alerts";
 import { exportStrategies, validateImportFile, parseImportFile, getImportStats } from "./exportImport";
 import { backupGotStrategy, backupGvgStrategy } from "./strategyBackup";
 import { storagePut } from "./storage";
@@ -63,6 +64,7 @@ const managerProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 export const appRouter = router({
   system: systemRouter,
+  alerts: alertsRouter,
   
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),

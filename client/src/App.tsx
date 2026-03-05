@@ -40,6 +40,8 @@ import { ArayashikiAnalysisPanel } from '@/pages/ArayashikiAnalysisPanel';
 import { ArayashikiSyncPanel } from '@/pages/ArayashikiSyncPanel';
 import GvgSeasonControl from "./pages/GvgSeasonControl";
 import WhatsAppTest from "./pages/WhatsAppTest";
+import GvgAvisosWhatsApp from "./pages/GvgAvisosWhatsApp";
+import ReliquiasAvisosConfig from "./pages/ReliquiasAvisosConfig";
 import { BackupManager } from "./pages/BackupManager";
 import AccountsPanel from "./pages/AccountsPanel";
 
@@ -72,6 +74,8 @@ function Router() {
       <Route path="/gvg/temporada" component={GvgSeasonControl} />
       <Route path="/reliquias/ataques" component={ReliquiasAttacks} />
       <Route path="/reliquias/avisos" component={ReliquiasAvisos} />
+      <Route path="/reliquias/avisos-config" component={ReliquiasAvisosConfig} />
+      <Route path="/gvg/avisos-whatsapp" component={GvgAvisosWhatsApp} />
       <Route path="/ranking" component={Ranking} />
       <Route path="/top5" component={Top5} />
       <Route path="/precisa-atencao" component={PrecisaAtencao} />

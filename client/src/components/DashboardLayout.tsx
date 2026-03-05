@@ -304,6 +304,15 @@ function DashboardLayoutContent({
                     </SidebarMenuItem>
                     <SidebarMenuItem>
                       <SidebarMenuButton
+                        isActive={location === '/gvg/avisos-whatsapp'}
+                        onClick={() => setLocation('/gvg/avisos-whatsapp')}
+                        className="h-9 pl-8 transition-all font-normal"
+                      >
+                        <span>Avisos WhatsApp</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
                         isActive={location === '/gvg/evolucao'}
                         onClick={() => setLocation('/gvg/evolucao')}
                         className="h-9 pl-8 transition-all font-normal"
@@ -474,6 +483,15 @@ function DashboardLayoutContent({
                         className="h-9 pl-8 transition-all font-normal"
                       >
                         <span>Avisos</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        isActive={location === '/reliquias/avisos-config'}
+                        onClick={() => setLocation('/reliquias/avisos-config')}
+                        className="h-9 pl-8 transition-all font-normal"
+                      >
+                        <span>Avisos Automáticos</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   </CollapsibleContent>
