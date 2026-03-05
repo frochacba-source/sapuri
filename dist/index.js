@@ -8373,15 +8373,25 @@ function serveStatic(app) {
     );
   }
   app.use(express.static(distPath, {
+    index: false,
+    // Don't serve index.html for directories
     setHeaders: (res, filePath) => {
       if (filePath.endsWith(".js")) {
-        res.setHeader("Content-Type", "application/javascript");
+        res.setHeader("Content-Type", "application/javascript; charset=utf-8");
       } else if (filePath.endsWith(".css")) {
-        res.setHeader("Content-Type", "text/css");
+        res.setHeader("Content-Type", "text/css; charset=utf-8");
+      } else if (filePath.endsWith(".woff2")) {
+        res.setHeader("Content-Type", "font/woff2");
+      } else if (filePath.endsWith(".woff")) {
+        res.setHeader("Content-Type", "font/woff");
       }
     }
   }));
-  app.use("*", (_req, res) => {
+  app.use("*", (req, res, next) => {
+    const url = req.originalUrl;
+    if (url.includes(".") && !url.endsWith(".html")) {
+      return res.status(404).send("Not found");
+    }
     res.sendFile(path5.resolve(distPath, "index.html"));
   });
 }

@@ -60,19 +60,31 @@ export function serveStatic(app: Express) {
     );
   }
 
-  // Serve static files with proper MIME types
+  // Serve static files with proper MIME types and extensions
   app.use(express.static(distPath, {
+    index: false, // Don't serve index.html for directories
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript');
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
       } else if (filePath.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css');
+        res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      } else if (filePath.endsWith('.woff2')) {
+        res.setHeader('Content-Type', 'font/woff2');
+      } else if (filePath.endsWith('.woff')) {
+        res.setHeader('Content-Type', 'font/woff');
       }
     }
   }));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  // SPA fallback - only for HTML requests (not assets)
+  app.use("*", (req, res, next) => {
+    // Skip if request is for a file with an extension (asset)
+    const url = req.originalUrl;
+    if (url.includes('.') && !url.endsWith('.html')) {
+      // This is a request for an asset that wasn't found
+      return res.status(404).send('Not found');
+    }
+    // Otherwise serve index.html for SPA routing
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
