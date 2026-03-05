@@ -153,9 +153,7 @@ Pessoal, escolham seus adversários e arrumem as defesas para teste.
 17
 18
 19
-20
-
-⏰ Horário: 13:30`;
+20`;
 }
 
 /**
@@ -169,13 +167,14 @@ export function startHourlyAlerts(whatsappGroupId?: string): boolean {
 
   state.whatsappGroupId = whatsappGroupId || null;
 
-  // Aviso de hora em hora (das 13:00 às 22:00)
-  state.hourlyJob = cron.schedule("0 13-22 * * *", async () => {
-    console.log("[GvG Scheduler] Executando aviso de hora em hora");
-    const escalados = await getEscaladosHoje();
-    const message = gerarMensagemEscalacao(escalados);
-    await sendGvgAlert(message, "both");
-  });
+  // Aviso de hora em hora DESABILITADO
+  // state.hourlyJob = cron.schedule("0 13-22 * * *", async () => {
+  //   console.log("[GvG Scheduler] Executando aviso de hora em hora");
+  //   const escalados = await getEscaladosHoje();
+  //   const message = gerarMensagemEscalacao(escalados);
+  //   await sendGvgAlert(message, "both");
+  // });
+  state.hourlyJob = null;
 
   // Mensagem especial às 13:30
   state.message1330Job = cron.schedule("30 13 * * *", async () => {

@@ -188,7 +188,7 @@ export default function GvgAvisosWhatsApp() {
                 Avisos Automáticos
               </CardTitle>
               <CardDescription>
-                Envia avisos de hora em hora (13:00 às 22:00) + mensagem especial às 13:30
+                Envia mensagem especial às 13:30 (escolha de adversários)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -233,7 +233,6 @@ export default function GvgAvisosWhatsApp() {
               </div>
 
               <div className="text-sm text-muted-foreground">
-                <p>📅 Horários de aviso: 13:00, 14:00, 15:00... até 22:00</p>
                 <p>⏰ Mensagem especial às 13:30 (escolha de adversários)</p>
               </div>
             </CardContent>
@@ -373,9 +372,7 @@ Pessoal, escolham seus adversários e arrumem as defesas para teste.
 17
 18
 19
-20
-
-⏰ Horário: 13:30`}
+20`}
             </div>
           </CardContent>
         </Card>
