@@ -100,6 +100,82 @@ router.delete('/accounts/:id', (req, res) => {
   }
 });
 
+// PUT /api/accounts/:id - Edita uma conta
+router.put('/accounts/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { gameName, price, description } = req.body;
+
+    const updatedAccount = accountScheduler.updateAccount(id, {
+      gameName,
+      price: price ? parseFloat(price) : undefined,
+      description,
+    });
+
+    if (updatedAccount) {
+      res.json({ success: true, account: updatedAccount });
+    } else {
+      res.status(404).json({ error: 'Conta não encontrada' });
+    }
+  } catch (error) {
+    console.error('Erro ao editar conta:', error);
+    res.status(500).json({ error: 'Erro ao editar conta' });
+  }
+});
+
+// POST /api/accounts/:id/send-telegram - Envio manual para Telegram
+router.post('/accounts/:id/send-telegram', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const account = accountScheduler.getAccountById(id);
+
+    if (!account) {
+      return res.status(404).json({ error: 'Conta não encontrada' });
+    }
+
+    await accountScheduler.sendAccountToTelegram(account);
+    res.json({ success: true, message: 'Conta enviada para o Telegram' });
+  } catch (error) {
+    console.error('Erro ao enviar para Telegram:', error);
+    res.status(500).json({ error: 'Erro ao enviar para Telegram' });
+  }
+});
+
+// POST /api/accounts/:id/send-whatsapp - Envio manual para WhatsApp (todos os grupos)
+router.post('/accounts/:id/send-whatsapp', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const account = accountScheduler.getAccountById(id);
+
+    if (!account) {
+      return res.status(404).json({ error: 'Conta não encontrada' });
+    }
+
+    const result = await accountScheduler.sendAccountToWhatsApp(account);
+    res.json({ 
+      success: true, 
+      message: `Conta enviada para ${result.sent} grupo(s) do WhatsApp`,
+      sent: result.sent,
+      failed: result.failed
+    });
+  } catch (error) {
+    console.error('Erro ao enviar para WhatsApp:', error);
+    res.status(500).json({ error: 'Erro ao enviar para WhatsApp' });
+  }
+});
+
+// POST /api/scheduler/whatsapp - Ativar/Desativar envio automático WhatsApp
+router.post('/scheduler/whatsapp', (req, res) => {
+  try {
+    const { enabled } = req.body;
+    accountScheduler.setWhatsAppEnabled(enabled === true);
+    res.json({ success: true, enabled: enabled === true });
+  } catch (error) {
+    console.error('Erro ao configurar WhatsApp:', error);
+    res.status(500).json({ error: 'Erro ao configurar WhatsApp' });
+  }
+});
+
 // GET /api/scheduler/status - Status do scheduler
 router.get('/scheduler/status', (_req, res) => {
   try {

@@ -3,6 +3,11 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import FormData from 'form-data';
+import { 
+  sendWhatsAppGroupMessage, 
+  getWhatsAppGroups, 
+  getWhatsAppStatus 
+} from '../whatsapp-web-client';
 
 interface Account {
   id: string;
@@ -17,6 +22,7 @@ interface SchedulerState {
   isRunning: boolean;
   intervalMinutes: number;
   task: any | null;
+  sendToWhatsApp: boolean; // Nova flag para envio WhatsApp
 }
 
 const ACCOUNTS_FILE = path.join(process.cwd(), 'server/data/contas.json');
@@ -28,6 +34,7 @@ let schedulerState: SchedulerState = {
   isRunning: false,
   intervalMinutes: 60,
   task: null,
+  sendToWhatsApp: true, // Envia também para WhatsApp por padrão
 };
 
 // Garantir que o diretório de dados existe
@@ -149,6 +156,86 @@ ${account.description}
   }
 }
 
+// Enviar conta para WhatsApp (todos os grupos)
+async function sendAccountToWhatsApp(account: Account): Promise<{ sent: number; failed: number }> {
+  const status = getWhatsAppStatus();
+  
+  if (!status.isConnected) {
+    console.log('[WhatsApp] Não conectado, pulando envio');
+    return { sent: 0, failed: 0 };
+  }
+
+  const message = `🎮 *Nova Conta à Venda!*
+
+🕹️ *Jogo:* ${account.gameName}
+💰 *Preço:* R$ ${account.price.toFixed(2)}
+
+📋 *Descrição:*
+${account.description}
+
+📸 ${account.images.length} imagem(ns) disponíveis
+
+💬 Entre em contato para mais informações!`;
+
+  try {
+    const groups = await getWhatsAppGroups();
+    let sent = 0;
+    let failed = 0;
+
+    for (const group of groups) {
+      try {
+        const success = await sendWhatsAppGroupMessage(group.id, message);
+        if (success) {
+          sent++;
+          console.log(`[WhatsApp] Mensagem enviada para grupo: ${group.name}`);
+        } else {
+          failed++;
+        }
+        // Delay entre mensagens para evitar flood
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error(`[WhatsApp] Erro ao enviar para grupo ${group.name}:`, error);
+        failed++;
+      }
+    }
+
+    return { sent, failed };
+  } catch (error) {
+    console.error('[WhatsApp] Erro ao enviar conta:', error);
+    return { sent: 0, failed: 0 };
+  }
+}
+
+// Enviar conta para um grupo específico do WhatsApp
+async function sendAccountToWhatsAppGroup(account: Account, groupId: string): Promise<boolean> {
+  const status = getWhatsAppStatus();
+  
+  if (!status.isConnected) {
+    console.log('[WhatsApp] Não conectado');
+    return false;
+  }
+
+  const message = `🎮 *Nova Conta à Venda!*
+
+🕹️ *Jogo:* ${account.gameName}
+💰 *Preço:* R$ ${account.price.toFixed(2)}
+
+📋 *Descrição:*
+${account.description}
+
+📸 ${account.images.length} imagem(ns) disponíveis
+
+💬 Entre em contato para mais informações!`;
+
+  try {
+    const success = await sendWhatsAppGroupMessage(groupId, message);
+    return success;
+  } catch (error) {
+    console.error('[WhatsApp] Erro ao enviar para grupo:', error);
+    return false;
+  }
+}
+
 // Executar ciclo de reenvio
 async function runSchedulerCycle() {
   const accounts = loadAccounts();
@@ -162,9 +249,18 @@ async function runSchedulerCycle() {
 
   for (const account of accounts) {
     try {
+      // Enviar para Telegram
       await sendAccountToTelegram(account);
-      // Aguardar 3 segundos entre contas
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Enviar para WhatsApp se habilitado
+      if (schedulerState.sendToWhatsApp) {
+        console.log(`[Scheduler] Enviando conta ${account.id} para WhatsApp...`);
+        const whatsAppResult = await sendAccountToWhatsApp(account);
+        console.log(`[Scheduler] WhatsApp: ${whatsAppResult.sent} enviados, ${whatsAppResult.failed} falhas`);
+      }
+      
+      // Aguardar 5 segundos entre contas
+      await new Promise(resolve => setTimeout(resolve, 5000));
     } catch (error) {
       console.error(`Erro ao enviar conta ${account.id}:`, error);
     }
@@ -216,7 +312,13 @@ function getSchedulerStatus() {
   return {
     isRunning: schedulerState.isRunning,
     intervalMinutes: schedulerState.intervalMinutes,
+    sendToWhatsApp: schedulerState.sendToWhatsApp,
   };
+}
+
+// Configurar envio para WhatsApp
+function setWhatsAppEnabled(enabled: boolean) {
+  schedulerState.sendToWhatsApp = enabled;
 }
 
 // Adicionar nova conta
@@ -255,6 +357,39 @@ function removeAccount(accountId: string): boolean {
   return true;
 }
 
+// Atualizar conta existente
+function updateAccount(
+  accountId: string, 
+  updates: { gameName?: string; price?: number; description?: string }
+): Account | null {
+  const accounts = loadAccounts();
+  const accountIndex = accounts.findIndex(acc => acc.id === accountId);
+
+  if (accountIndex === -1) {
+    return null; // Conta não encontrada
+  }
+
+  // Atualizar campos
+  if (updates.gameName !== undefined) {
+    accounts[accountIndex].gameName = updates.gameName;
+  }
+  if (updates.price !== undefined) {
+    accounts[accountIndex].price = updates.price;
+  }
+  if (updates.description !== undefined) {
+    accounts[accountIndex].description = updates.description;
+  }
+
+  saveAccounts(accounts);
+  return accounts[accountIndex];
+}
+
+// Obter conta por ID
+function getAccountById(accountId: string): Account | null {
+  const accounts = loadAccounts();
+  return accounts.find(acc => acc.id === accountId) || null;
+}
+
 // Obter todas as contas
 function getAllAccounts(): Account[] {
   return loadAccounts();
@@ -264,8 +399,13 @@ export {
   startScheduler,
   stopScheduler,
   getSchedulerStatus,
+  setWhatsAppEnabled,
   addAccount,
   removeAccount,
+  updateAccount,
+  getAccountById,
   getAllAccounts,
   sendAccountToTelegram,
+  sendAccountToWhatsApp,
+  sendAccountToWhatsAppGroup,
 };
