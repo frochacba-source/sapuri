@@ -50,3 +50,4 @@ tags.json
 # Python files (migration scripts)
 __pycache__/
 *.py
+node_modules
