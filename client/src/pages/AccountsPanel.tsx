@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { 
   Trash2, 
   Play, 
@@ -16,7 +17,11 @@ import {
   Image as ImageIcon,
   Calendar,
   DollarSign,
-  Gamepad2
+  Gamepad2,
+  Users,
+  Settings,
+  Save,
+  RefreshCw
 } from 'lucide-react';
 
 interface Account {
@@ -32,6 +37,14 @@ interface SchedulerStatus {
   isRunning: boolean;
   intervalMinutes: number;
   sendToWhatsApp: boolean;
+  selectedGroups: string[];
+}
+
+interface WhatsAppGroup {
+  id: string;
+  name: string;
+  participantCount: number;
+  selected: boolean;
 }
 
 export default function AccountsPanel() {
@@ -40,6 +53,7 @@ export default function AccountsPanel() {
     isRunning: false,
     intervalMinutes: 60,
     sendToWhatsApp: true,
+    selectedGroups: [],
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -49,6 +63,12 @@ export default function AccountsPanel() {
   const [sendingTelegram, setSendingTelegram] = useState<string | null>(null);
   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  
+  // Estados para seleção de grupos
+  const [whatsappGroups, setWhatsappGroups] = useState<WhatsAppGroup[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [savingGroups, setSavingGroups] = useState(false);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   // Estado do modal de edição
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -70,10 +90,11 @@ export default function AccountsPanel() {
     images: [] as File[],
   });
 
-  // Carregar contas e status do scheduler
+  // Carregar contas, status do scheduler e grupos
   useEffect(() => {
     loadAccounts();
     loadSchedulerStatus();
+    loadWhatsAppGroups();
   }, []);
 
   // Limpar mensagem após 5 segundos
@@ -107,9 +128,72 @@ export default function AccountsPanel() {
       if (response.ok) {
         const data = await response.json();
         setSchedulerStatus(data);
+        setSelectedGroupIds(data.selectedGroups || []);
       }
     } catch (error) {
       console.error('Erro ao carregar status do scheduler:', error);
+    }
+  };
+
+  const loadWhatsAppGroups = async () => {
+    setLoadingGroups(true);
+    try {
+      const response = await fetch('/api/accounts/groups');
+      if (response.ok) {
+        const data = await response.json();
+        setWhatsappGroups(data.whatsapp || []);
+        // Atualizar selectedGroupIds com os grupos selecionados
+        const selected = (data.whatsapp || [])
+          .filter((g: WhatsAppGroup) => g.selected)
+          .map((g: WhatsAppGroup) => g.id);
+        if (selected.length > 0) {
+          setSelectedGroupIds(selected);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar grupos:', error);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  const toggleGroupSelection = (groupId: string) => {
+    setSelectedGroupIds(prev => 
+      prev.includes(groupId) 
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
+  };
+
+  const selectAllGroups = () => {
+    setSelectedGroupIds(whatsappGroups.map(g => g.id));
+  };
+
+  const deselectAllGroups = () => {
+    setSelectedGroupIds([]);
+  };
+
+  const saveSelectedGroups = async () => {
+    setSavingGroups(true);
+    try {
+      const response = await fetch('/api/accounts/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ groupIds: selectedGroupIds }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showMessage(`✅ ${data.message}`, 'success');
+        loadSchedulerStatus();
+      } else {
+        showMessage('❌ Erro ao salvar grupos', 'error');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar grupos:', error);
+      showMessage('❌ Erro ao salvar grupos', 'error');
+    } finally {
+      setSavingGroups(false);
     }
   };
 
@@ -531,6 +615,144 @@ export default function AccountsPanel() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Seleção de Grupos WhatsApp */}
+      <Card className="bg-gray-900 border-gray-800">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-green-400" />
+              Configurar Grupos WhatsApp
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={loadWhatsAppGroups}
+                disabled={loadingGroups}
+                variant="outline"
+                size="sm"
+                className="border-gray-600"
+              >
+                {loadingGroups ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Selecione os grupos que receberão os anúncios de contas. Se nenhum grupo for selecionado, os anúncios serão enviados para todos os grupos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loadingGroups ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-green-400" />
+              <span className="ml-2 text-gray-400">Carregando grupos...</span>
+            </div>
+          ) : whatsappGroups.length === 0 ? (
+            <div className="text-center py-8">
+              <MessageCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400">Nenhum grupo disponível</p>
+              <p className="text-gray-500 text-sm mt-1">
+                Conecte o WhatsApp para ver os grupos disponíveis
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Botões de seleção rápida */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-700">
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={selectAllGroups}
+                    variant="outline"
+                    size="sm"
+                    className="border-green-600 text-green-400 hover:bg-green-600/20"
+                  >
+                    Selecionar Todos
+                  </Button>
+                  <Button
+                    onClick={deselectAllGroups}
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-600 hover:bg-gray-700"
+                  >
+                    Limpar Seleção
+                  </Button>
+                </div>
+                <span className="text-sm text-gray-400">
+                  {selectedGroupIds.length} de {whatsappGroups.length} selecionados
+                </span>
+              </div>
+
+              {/* Lista de grupos */}
+              <div className="grid gap-2 max-h-64 overflow-y-auto pr-2">
+                {whatsappGroups.map((group) => (
+                  <div
+                    key={group.id}
+                    onClick={() => toggleGroupSelection(group.id)}
+                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${
+                      selectedGroupIds.includes(group.id)
+                        ? 'bg-green-900/30 border-green-600'
+                        : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded flex items-center justify-center border ${
+                        selectedGroupIds.includes(group.id)
+                          ? 'bg-green-600 border-green-600'
+                          : 'border-gray-500'
+                      }`}>
+                        {selectedGroupIds.includes(group.id) && (
+                          <Check className="w-3 h-3 text-white" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-white">{group.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {group.participantCount} participantes
+                        </p>
+                      </div>
+                    </div>
+                    <MessageCircle className={`w-5 h-5 ${
+                      selectedGroupIds.includes(group.id)
+                        ? 'text-green-400'
+                        : 'text-gray-500'
+                    }`} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Botão Salvar */}
+              <div className="pt-3 border-t border-gray-700">
+                <Button
+                  onClick={saveSelectedGroups}
+                  disabled={savingGroups}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {savingGroups ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Salvar Configuração de Grupos
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  {selectedGroupIds.length === 0
+                    ? 'Com nenhum grupo selecionado, os anúncios serão enviados para TODOS os grupos'
+                    : `Anúncios serão enviados apenas para os ${selectedGroupIds.length} grupo(s) selecionado(s)`
+                  }
+                </p>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Lista de Contas */}
       <Card className="bg-gray-900 border-gray-800">

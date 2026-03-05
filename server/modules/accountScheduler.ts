@@ -24,9 +24,11 @@ interface SchedulerState {
   intervalMinutes: number;
   task: any | null;
   sendToWhatsApp: boolean; // Nova flag para envio WhatsApp
+  selectedGroups: string[]; // Grupos selecionados para envio
 }
 
 const ACCOUNTS_FILE = path.join(process.cwd(), 'server/data/contas.json');
+const CONFIG_FILE = path.join(process.cwd(), 'server/data/contas-config.json');
 // Credenciais específicas do Painel de Contas - envia APENAS para o grupo -5156917144
 const TELEGRAM_BOT_TOKEN = process.env.PAINEL_CONTAS_BOT_TOKEN || '8425089071:AAHSyCnG_zOl2_1oKabx2vqib7gl1joFEeY';
 const TELEGRAM_CHAT_ID = process.env.PAINEL_CONTAS_CHAT_ID || '-5156917144';
@@ -36,7 +38,41 @@ let schedulerState: SchedulerState = {
   intervalMinutes: 60,
   task: null,
   sendToWhatsApp: true, // Envia também para WhatsApp por padrão
+  selectedGroups: [], // Vazio = envia para todos
 };
+
+// Interface para configuração persistente
+interface AccountsConfig {
+  selectedGroups: string[];
+  sendToWhatsApp: boolean;
+}
+
+// Carregar configuração de grupos do arquivo
+function loadConfig(): AccountsConfig {
+  ensureDataDir();
+  try {
+    if (fs.existsSync(CONFIG_FILE)) {
+      const data = fs.readFileSync(CONFIG_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Erro ao carregar config:', error);
+  }
+  return { selectedGroups: [], sendToWhatsApp: true };
+}
+
+// Salvar configuração de grupos no arquivo
+function saveConfig(config: AccountsConfig) {
+  ensureDataDir();
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
+// Inicializar estado com configuração salva
+(function initConfig() {
+  const config = loadConfig();
+  schedulerState.selectedGroups = config.selectedGroups || [];
+  schedulerState.sendToWhatsApp = config.sendToWhatsApp !== false;
+})();
 
 // Garantir que o diretório de dados existe
 function ensureDataDir() {
@@ -157,8 +193,8 @@ ${account.description}
   }
 }
 
-// Enviar conta para WhatsApp (todos os grupos) - com imagens
-async function sendAccountToWhatsApp(account: Account): Promise<{ sent: number; failed: number }> {
+// Enviar conta para WhatsApp (grupos selecionados ou todos) - com imagens
+async function sendAccountToWhatsApp(account: Account, targetGroups?: string[]): Promise<{ sent: number; failed: number }> {
   const status = getWhatsAppStatus();
   
   if (!status.isConnected) {
@@ -179,7 +215,21 @@ ${account.description}
 💬 Entre em contato para mais informações!`;
 
   try {
-    const groups = await getWhatsAppGroups();
+    const allGroups = await getWhatsAppGroups();
+    
+    // Usar grupos selecionados (do parâmetro ou estado) ou todos os grupos
+    const selectedGroupIds = targetGroups || schedulerState.selectedGroups;
+    const groups = selectedGroupIds.length > 0
+      ? allGroups.filter(g => selectedGroupIds.includes(g.id))
+      : allGroups;
+    
+    if (groups.length === 0) {
+      console.log('[WhatsApp] Nenhum grupo para enviar');
+      return { sent: 0, failed: 0 };
+    }
+    
+    console.log(`[WhatsApp] Enviando para ${groups.length} grupo(s): ${groups.map(g => g.name).join(', ')}`);
+    
     let sent = 0;
     let failed = 0;
 
@@ -353,12 +403,50 @@ function getSchedulerStatus() {
     isRunning: schedulerState.isRunning,
     intervalMinutes: schedulerState.intervalMinutes,
     sendToWhatsApp: schedulerState.sendToWhatsApp,
+    selectedGroups: schedulerState.selectedGroups,
   };
 }
 
 // Configurar envio para WhatsApp
 function setWhatsAppEnabled(enabled: boolean) {
   schedulerState.sendToWhatsApp = enabled;
+  saveConfig({ 
+    selectedGroups: schedulerState.selectedGroups, 
+    sendToWhatsApp: enabled 
+  });
+}
+
+// Configurar grupos selecionados
+function setSelectedGroups(groupIds: string[]) {
+  schedulerState.selectedGroups = groupIds;
+  saveConfig({ 
+    selectedGroups: groupIds, 
+    sendToWhatsApp: schedulerState.sendToWhatsApp 
+  });
+  console.log(`[Scheduler] Grupos configurados: ${groupIds.length > 0 ? groupIds.join(', ') : 'todos'}`);
+}
+
+// Obter grupos selecionados
+function getSelectedGroups(): string[] {
+  return schedulerState.selectedGroups;
+}
+
+// Listar grupos disponíveis (WhatsApp)
+async function listAvailableGroups() {
+  const status = getWhatsAppStatus();
+  if (!status.isConnected) {
+    return { whatsapp: [] };
+  }
+  
+  const groups = await getWhatsAppGroups();
+  return {
+    whatsapp: groups.map(g => ({
+      id: g.id,
+      name: g.name,
+      participantCount: g.participantCount,
+      selected: schedulerState.selectedGroups.includes(g.id)
+    }))
+  };
 }
 
 // Adicionar nova conta
@@ -440,6 +528,9 @@ export {
   stopScheduler,
   getSchedulerStatus,
   setWhatsAppEnabled,
+  setSelectedGroups,
+  getSelectedGroups,
+  listAvailableGroups,
   addAccount,
   removeAccount,
   updateAccount,

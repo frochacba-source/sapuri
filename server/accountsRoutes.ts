@@ -210,4 +210,67 @@ router.post('/scheduler/stop', (_req, res) => {
   }
 });
 
+// GET /api/accounts/groups - Lista grupos disponíveis
+router.get('/accounts/groups', async (_req, res) => {
+  try {
+    const groups = await accountScheduler.listAvailableGroups();
+    res.json(groups);
+  } catch (error) {
+    console.error('Erro ao listar grupos:', error);
+    res.status(500).json({ error: 'Erro ao listar grupos' });
+  }
+});
+
+// POST /api/accounts/groups - Salva grupos selecionados
+router.post('/accounts/groups', (req, res) => {
+  try {
+    const { groupIds } = req.body;
+    
+    if (!Array.isArray(groupIds)) {
+      return res.status(400).json({ error: 'groupIds deve ser um array' });
+    }
+    
+    accountScheduler.setSelectedGroups(groupIds);
+    res.json({ 
+      success: true, 
+      selectedGroups: groupIds,
+      message: groupIds.length > 0 
+        ? `${groupIds.length} grupo(s) selecionado(s)` 
+        : 'Envio configurado para todos os grupos'
+    });
+  } catch (error) {
+    console.error('Erro ao configurar grupos:', error);
+    res.status(500).json({ error: 'Erro ao configurar grupos' });
+  }
+});
+
+// POST /api/accounts/:id/send-whatsapp-groups - Envio manual para grupos específicos
+router.post('/accounts/:id/send-whatsapp-groups', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { groupIds } = req.body;
+    
+    const account = accountScheduler.getAccountById(id);
+    if (!account) {
+      return res.status(404).json({ error: 'Conta não encontrada' });
+    }
+
+    // Se groupIds fornecido, usa eles; senão usa os selecionados na config
+    const targetGroups = Array.isArray(groupIds) && groupIds.length > 0 
+      ? groupIds 
+      : undefined;
+    
+    const result = await accountScheduler.sendAccountToWhatsApp(account, targetGroups);
+    res.json({ 
+      success: true, 
+      message: `Conta enviada para ${result.sent} grupo(s) do WhatsApp`,
+      sent: result.sent,
+      failed: result.failed
+    });
+  } catch (error) {
+    console.error('Erro ao enviar para WhatsApp:', error);
+    res.status(500).json({ error: 'Erro ao enviar para WhatsApp' });
+  }
+});
+
 export default router;
