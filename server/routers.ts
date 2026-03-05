@@ -24,6 +24,7 @@ import {
   validateWhatsAppToken
 } from "./telegram";
 import { analyzeGvgScreenshot, analyzeGotScreenshot, analyzeReliquiasScreenshot, matchPlayerToMember } from "./imageAnalysis";
+import { sendWhatsAppGroupMessage, getWhatsAppStatus as getWhatsAppStatusReal, getWhatsAppGroups } from "./whatsapp-web-client";
 import { invokeLLM } from "./_core/llm";
 import { recommendationsRouter } from "./routers/recommendations";
 import { aiChatRouter } from "./routers/aiChat";
@@ -423,6 +424,74 @@ export const appRouter = router({
         }
         
         return { success };
+      }),
+    
+    sendWhatsAppNotification: managerProcedure
+      .input(z.object({
+        eventTypeId: z.number(),
+        eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        groupId: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const schedule = await db.getScheduleByEventAndDate(input.eventTypeId, input.eventDate);
+        if (!schedule) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Escalação não encontrada' });
+        }
+        
+        const eventType = await db.getEventTypeById(input.eventTypeId);
+        if (!eventType) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Tipo de evento não encontrado' });
+        }
+        
+        // Verificar status do WhatsApp
+        const whatsappStatus = getWhatsAppStatusReal();
+        if (whatsappStatus.status !== 'connected') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'WhatsApp não está conectado. Configure na página de Configuração WhatsApp.' });
+        }
+        
+        // Buscar grupos se não foi especificado
+        let targetGroupId = input.groupId;
+        if (!targetGroupId) {
+          const groups = await getWhatsAppGroups();
+          if (groups.length === 0) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Nenhum grupo WhatsApp disponível' });
+          }
+          // Usar o primeiro grupo disponível
+          targetGroupId = groups[0].id;
+        }
+        
+        const entries = await db.getEntriesBySchedule(schedule.id);
+        const memberNames = entries.map(e => e.member.name);
+        
+        // Formatar mensagem para WhatsApp
+        const memberList = memberNames.map((name, i) => `${i + 1}. ${name}`).join("\n");
+        const formattedDate = new Date(input.eventDate + 'T12:00:00').toLocaleDateString('pt-BR');
+        
+        const message = `⚔️ *${eventType.displayName} - ESCALAÇÃO*
+📅 *Data:* ${formattedDate}
+⏰ *Horário:* ${eventType.eventTime}
+
+🛡️ *Escalados salvem suas defesas!*
+${memberList}
+
+✅ Confirme sua presença!`;
+        
+        const success = await sendWhatsAppGroupMessage(targetGroupId, message);
+        
+        if (!success) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Falha ao enviar mensagem para o WhatsApp' });
+        }
+        
+        return { success: true };
+      }),
+    
+    getWhatsAppGroups: managerProcedure
+      .query(async () => {
+        const whatsappStatus = getWhatsAppStatusReal();
+        if (whatsappStatus.status !== 'connected') {
+          return [];
+        }
+        return await getWhatsAppGroups();
       }),
     
     history: protectedProcedure

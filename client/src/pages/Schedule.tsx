@@ -8,7 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { SchedulePreview } from "@/components/SchedulePreview";
 import { trpc } from "@/lib/trpc";
 import { useParams } from "wouter";
-import { Calendar, Send, Save, Search, Users, ChevronLeft, ChevronRight, Swords, Trophy, Crown } from "lucide-react";
+import { Calendar, Send, Save, Search, Users, ChevronLeft, ChevronRight, Swords, Trophy, Crown, MessageCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -24,6 +31,7 @@ export default function Schedule() {
   });
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedWhatsAppGroup, setSelectedWhatsAppGroup] = useState<string>("");
 
   const utils = trpc.useUtils();
   const { data: eventTypes } = trpc.eventTypes.list.useQuery();
@@ -64,6 +72,18 @@ export default function Schedule() {
     onSuccess: () => {
       utils.schedules.getByEventAndDate.invalidate();
       toast.success("Notificação enviada para o Telegram!");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  // WhatsApp queries and mutations
+  const { data: whatsappGroups } = trpc.schedules.getWhatsAppGroups.useQuery();
+  
+  const sendWhatsAppNotification = trpc.schedules.sendWhatsAppNotification.useMutation({
+    onSuccess: () => {
+      toast.success("Escalação enviada para o WhatsApp!");
     },
     onError: (error) => {
       toast.error(error.message);
@@ -114,6 +134,15 @@ export default function Schedule() {
     sendNotification.mutate({
       eventTypeId: eventType.id,
       eventDate: selectedDate,
+    });
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!eventType) return;
+    sendWhatsAppNotification.mutate({
+      eventTypeId: eventType.id,
+      eventDate: selectedDate,
+      groupId: selectedWhatsAppGroup || undefined,
     });
   };
 
@@ -358,6 +387,8 @@ export default function Schedule() {
                     <Save className="w-4 h-4 mr-2" />
                     {saveSchedule.isPending ? "Salvando..." : "Salvar Escalação"}
                   </Button>
+                  
+                  {/* Telegram Button */}
                   <Button 
                     variant="outline" 
                     className="w-full"
@@ -365,8 +396,43 @@ export default function Schedule() {
                     disabled={sendNotification.isPending || !existingSchedule}
                   >
                     <Send className="w-4 h-4 mr-2" />
-                    {sendNotification.isPending ? "Enviando..." : "Enviar Notificação"}
+                    {sendNotification.isPending ? "Enviando..." : "Enviar Telegram"}
                   </Button>
+                  
+                  {/* WhatsApp Section */}
+                  <div className="pt-2 border-t space-y-2">
+                    {whatsappGroups && whatsappGroups.length > 0 && (
+                      <Select 
+                        value={selectedWhatsAppGroup} 
+                        onValueChange={setSelectedWhatsAppGroup}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Selecionar grupo WhatsApp" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {whatsappGroups.map((group) => (
+                            <SelectItem key={group.id} value={group.id}>
+                              {group.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      className="w-full bg-green-600 hover:bg-green-700 text-white border-green-600 hover:border-green-700"
+                      onClick={handleSendWhatsApp}
+                      disabled={sendWhatsAppNotification.isPending || !existingSchedule}
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      {sendWhatsAppNotification.isPending ? "Enviando..." : "Enviar WhatsApp"}
+                    </Button>
+                    {(!whatsappGroups || whatsappGroups.length === 0) && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Configure o WhatsApp em Configurações para habilitar o envio
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>
