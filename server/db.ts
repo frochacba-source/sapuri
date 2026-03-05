@@ -1240,7 +1240,8 @@ export async function upsertReliquiasMemberAssignment(data: InsertReliquiasMembe
         role: data.role,
         guard1Number: data.guard1Number,
         guard2Number: data.guard2Number,
-        performance: data.performance,
+        performance: data.performance != null ? String(data.performance) : null,
+        updatedAt: String(Date.now()),
       })
       .where(eq(reliquiasMemberAssignments.id, existing[0].id));
     return existing[0].id;
@@ -1270,13 +1271,14 @@ export async function upsertReliquiasMemberAssignment(data: InsertReliquiasMembe
       throw new Error('Failed to generate unique ID for reliquiasMemberAssignments');
     }
     
-    const performance = data.performance ?? 0;
-    const now = Date.now(); // Unix timestamp in milliseconds
+    const performance = data.performance != null ? String(data.performance) : null;
+    const now = String(Date.now()); // Unix timestamp as string for varchar field
     await db.insert(reliquiasMemberAssignments).values({
       id: newId,
       seasonId: data.seasonId,
       memberId: data.memberId,
       bossName: data.bossName,
+      bossId: data.bossId ?? 0,
       attackNumber: data.attackNumber || 1,
       role: data.role,
       guard1Number: data.guard1Number ?? 0,
