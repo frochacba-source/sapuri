@@ -1,6 +1,7 @@
 /**
  * WhatsApp Web Client usando Baileys
  * Sistema de conexão e envio de mensagens via WhatsApp
+ * Inclui sistema de comandos para consultar estratégias
  */
 
 import makeWASocket, {
@@ -17,6 +18,9 @@ import * as qrcode from "qrcode";
 import * as fs from "fs";
 import * as path from "path";
 import pino from "pino";
+import { getDb } from "./db";
+import { gvgStrategies, gotStrategies, GvgStrategy, GotStrategy } from "../drizzle/schema";
+import { like, desc, sql } from "drizzle-orm";
 
 // Diretório para salvar sessões
 const SESSIONS_DIR = path.join(process.cwd(), "server", "whatsapp-sessions");
@@ -39,6 +43,311 @@ const messageHistory: MessageHistoryEntry[] = [];
 
 // Logger silencioso para produção
 const logger = pino({ level: "silent" });
+
+// ============ SISTEMA DE COMANDOS ============
+
+const MAX_STRATEGIES_PER_RESPONSE = 5;
+
+/**
+ * Buscar estratégias GvG no banco de dados
+ */
+async function searchGvgStrategies(searchTerm?: string): Promise<GvgStrategy[]> {
+  const db = await getDb();
+  if (!db) {
+    console.log("[WhatsApp Bot] Banco de dados não disponível");
+    return [];
+  }
+
+  try {
+    let strategies: GvgStrategy[];
+    
+    if (searchTerm && searchTerm.trim()) {
+      // Busca por nome ou formação
+      strategies = await db
+        .select()
+        .from(gvgStrategies)
+        .where(sql`LOWER(${gvgStrategies.name}) LIKE ${`%${searchTerm.toLowerCase()}%`}`)
+        .orderBy(desc(gvgStrategies.usageCount))
+        .limit(MAX_STRATEGIES_PER_RESPONSE);
+    } else {
+      // Retorna as mais usadas
+      strategies = await db
+        .select()
+        .from(gvgStrategies)
+        .orderBy(desc(gvgStrategies.usageCount))
+        .limit(MAX_STRATEGIES_PER_RESPONSE);
+    }
+
+    console.log(`[WhatsApp Bot] Encontradas ${strategies.length} estratégias GvG`);
+    return strategies;
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar estratégias GvG:", error);
+    return [];
+  }
+}
+
+/**
+ * Buscar estratégias GoT no banco de dados
+ */
+async function searchGotStrategies(searchTerm?: string): Promise<GotStrategy[]> {
+  const db = await getDb();
+  if (!db) {
+    console.log("[WhatsApp Bot] Banco de dados não disponível");
+    return [];
+  }
+
+  try {
+    let strategies: GotStrategy[];
+    
+    if (searchTerm && searchTerm.trim()) {
+      // Busca por nome ou observação
+      strategies = await db
+        .select()
+        .from(gotStrategies)
+        .where(sql`LOWER(${gotStrategies.name}) LIKE ${`%${searchTerm.toLowerCase()}%`} OR LOWER(${gotStrategies.observation}) LIKE ${`%${searchTerm.toLowerCase()}%`}`)
+        .orderBy(desc(gotStrategies.usageCount))
+        .limit(MAX_STRATEGIES_PER_RESPONSE);
+    } else {
+      // Retorna as mais usadas
+      strategies = await db
+        .select()
+        .from(gotStrategies)
+        .orderBy(desc(gotStrategies.usageCount))
+        .limit(MAX_STRATEGIES_PER_RESPONSE);
+    }
+
+    console.log(`[WhatsApp Bot] Encontradas ${strategies.length} estratégias GoT`);
+    return strategies;
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao buscar estratégias GoT:", error);
+    return [];
+  }
+}
+
+/**
+ * Formatar estratégia GvG para mensagem WhatsApp
+ */
+function formatGvgStrategy(strategy: GvgStrategy): string {
+  const name = strategy.name || `Estratégia #${strategy.id}`;
+  
+  return `
+🗡️ *${name}*
+━━━━━━━━━━━━━━━━━━
+
+⚔️ *ATAQUE (5v5):*
+┌──────────────────┐
+│ ${strategy.attackFormation1}
+│ ${strategy.attackFormation2}
+│ ${strategy.attackFormation3}
+│ ${strategy.attackFormation4}
+│ ${strategy.attackFormation5}
+└──────────────────┘
+
+🛡️ *DEFESA (5v5):*
+┌──────────────────┐
+│ ${strategy.defenseFormation1}
+│ ${strategy.defenseFormation2}
+│ ${strategy.defenseFormation3}
+│ ${strategy.defenseFormation4}
+│ ${strategy.defenseFormation5}
+└──────────────────┘
+
+📊 _Usos: ${strategy.usageCount}_
+`;
+}
+
+/**
+ * Formatar estratégia GoT para mensagem WhatsApp
+ */
+function formatGotStrategy(strategy: GotStrategy): string {
+  const name = strategy.name || `Estratégia #${strategy.id}`;
+  const observation = strategy.observation ? `\n📝 _${strategy.observation}_` : "";
+  
+  return `
+⚔️ *${name}*
+━━━━━━━━━━━━━━━━━━
+
+🔴 *ATAQUE (3x3):*
+┌──────────────────┐
+│ ${strategy.attackFormation1}
+│ ${strategy.attackFormation2}
+│ ${strategy.attackFormation3}
+└──────────────────┘
+
+🔵 *DEFESA (3x3):*
+┌──────────────────┐
+│ ${strategy.defenseFormation1}
+│ ${strategy.defenseFormation2}
+│ ${strategy.defenseFormation3}
+└──────────────────┘
+
+📊 _Usos: ${strategy.usageCount}_${observation}
+`;
+}
+
+/**
+ * Gerar mensagem de ajuda
+ */
+function getHelpMessage(): string {
+  return `
+🤖 *BOT SAPURI - COMANDOS*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 *Comandos Disponíveis:*
+
+/help ou /ajuda
+↳ Lista todos os comandos
+
+/estrategias
+↳ Lista tipos de estratégias disponíveis
+
+/gvg
+↳ Mostra as 5 estratégias GvG mais usadas
+
+/gvg [busca]
+↳ Busca estratégia GvG por nome
+↳ Ex: /gvg cavalaria
+
+/got
+↳ Mostra as 5 estratégias GoT mais usadas
+
+/got [busca]
+↳ Busca estratégia GoT por nome
+↳ Ex: /got defesa forte
+
+━━━━━━━━━━━━━━━━━━━━━━━
+_Sistema Sapuri v1.0_
+`;
+}
+
+/**
+ * Gerar mensagem de tipos de estratégias
+ */
+function getStrategiesTypesMessage(): string {
+  return `
+📚 *TIPOS DE ESTRATÉGIAS*
+━━━━━━━━━━━━━━━━━━━━━━━
+
+🗡️ *GvG (Guerra de Guildas)*
+• Formação 5v5
+• Use: /gvg
+
+⚔️ *GoT (Guerra de Titãs)*
+• Formação 3x3
+• Use: /got
+
+💡 _Dica: Adicione uma palavra para buscar_
+_Ex: /gvg cavalaria_
+`;
+}
+
+/**
+ * Processar comando recebido
+ */
+async function processCommand(command: string): Promise<string | null> {
+  const trimmed = command.trim().toLowerCase();
+  
+  // Verificar se é um comando (começa com /)
+  if (!trimmed.startsWith("/")) {
+    return null;
+  }
+
+  const parts = trimmed.split(/\s+/);
+  const cmd = parts[0];
+  const searchTerm = parts.slice(1).join(" ");
+
+  console.log(`[WhatsApp Bot] Processando comando: ${cmd}, termo: "${searchTerm}"`);
+
+  switch (cmd) {
+    case "/help":
+    case "/ajuda":
+      return getHelpMessage();
+
+    case "/estrategias":
+    case "/estratégias":
+      return getStrategiesTypesMessage();
+
+    case "/gvg": {
+      const strategies = await searchGvgStrategies(searchTerm || undefined);
+      
+      if (strategies.length === 0) {
+        return searchTerm
+          ? `❌ Nenhuma estratégia GvG encontrada para "${searchTerm}"\n\n_Tente outro termo ou use /gvg para ver as mais usadas._`
+          : "❌ Nenhuma estratégia GvG cadastrada no sistema.";
+      }
+
+      const header = searchTerm
+        ? `🔍 *Resultados para "${searchTerm}":*\n`
+        : `📊 *Top ${strategies.length} Estratégias GvG:*\n`;
+      
+      const formatted = strategies.map(formatGvgStrategy).join("\n━━━━━━━━━━━━━━━━━━\n");
+      return header + formatted;
+    }
+
+    case "/got": {
+      const strategies = await searchGotStrategies(searchTerm || undefined);
+      
+      if (strategies.length === 0) {
+        return searchTerm
+          ? `❌ Nenhuma estratégia GoT encontrada para "${searchTerm}"\n\n_Tente outro termo ou use /got para ver as mais usadas._`
+          : "❌ Nenhuma estratégia GoT cadastrada no sistema.";
+      }
+
+      const header = searchTerm
+        ? `🔍 *Resultados para "${searchTerm}":*\n`
+        : `📊 *Top ${strategies.length} Estratégias GoT:*\n`;
+      
+      const formatted = strategies.map(formatGotStrategy).join("\n━━━━━━━━━━━━━━━━━━\n");
+      return header + formatted;
+    }
+
+    default:
+      // Comando não reconhecido - não responde (evita spam)
+      return null;
+  }
+}
+
+/**
+ * Handler de mensagens recebidas
+ */
+async function handleIncomingMessage(message: any): Promise<void> {
+  try {
+    // Ignorar mensagens do próprio bot
+    if (message.key.fromMe) {
+      return;
+    }
+
+    // Extrair texto da mensagem
+    const text = message.message?.conversation ||
+                 message.message?.extendedTextMessage?.text ||
+                 "";
+
+    if (!text || !text.trim()) {
+      return;
+    }
+
+    const remoteJid = message.key.remoteJid;
+    const isGroup = remoteJid?.endsWith("@g.us");
+    const sender = message.key.participant || message.key.remoteJid;
+
+    console.log(`[WhatsApp Bot] Mensagem recebida de ${isGroup ? "grupo" : "privado"}: ${text.substring(0, 50)}`);
+
+    // Processar comando
+    const response = await processCommand(text);
+
+    if (response && socket) {
+      // Pequeno delay para parecer mais natural
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Responder no mesmo chat
+      await socket.sendMessage(remoteJid, { text: response });
+      
+      console.log(`[WhatsApp Bot] Resposta enviada para ${remoteJid}`);
+    }
+  } catch (error) {
+    console.error("[WhatsApp Bot] Erro ao processar mensagem:", error);
+  }
+}
 
 /**
  * Garantir que o diretório de sessões existe
@@ -167,10 +476,13 @@ export async function connectWhatsApp(): Promise<boolean> {
     // Salvar credenciais quando atualizadas
     socket.ev.on("creds.update", saveCreds);
 
-    // Handler de mensagens recebidas (para debug)
-    socket.ev.on("messages.upsert", (msg) => {
+    // Handler de mensagens recebidas (sistema de comandos)
+    socket.ev.on("messages.upsert", async (msg) => {
       if (msg.type === "notify") {
-        console.log("[WhatsApp] Mensagem recebida:", msg.messages[0]?.key?.remoteJid);
+        for (const message of msg.messages) {
+          console.log("[WhatsApp] Mensagem recebida:", message.key?.remoteJid);
+          await handleIncomingMessage(message);
+        }
       }
     });
 
@@ -330,7 +642,8 @@ export async function checkWhatsAppNumber(phoneNumber: string): Promise<boolean>
 
   try {
     const jid = formatPhoneNumber(phoneNumber);
-    const [result] = await socket.onWhatsApp(jid.replace("@s.whatsapp.net", ""));
+    const results = await socket.onWhatsApp(jid.replace("@s.whatsapp.net", ""));
+    const result = results?.[0];
     return result?.exists ?? false;
   } catch (error) {
     console.error("[WhatsApp] Erro ao verificar número:", error);
