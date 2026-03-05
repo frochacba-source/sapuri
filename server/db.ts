@@ -309,7 +309,7 @@ export async function getScheduleByEventAndDate(eventTypeId: number, eventDate: 
 export async function createSchedule(data: InsertSchedule) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(schedules).values(data).returning({ id: true });
+  const result = await db.insert(schedules).values(data).returning({ id: schedules.id });
   return result[0]?.id;
 }
 
