@@ -281,8 +281,8 @@ export type InsertBotConfig = typeof botConfig.$inferInsert;
 export const reliquiasSeasons = pgTable("reliquiasSeasons", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
-  startDate: varchar("startDate", { length: 10 }).notNull(),
-  endDate: varchar("endDate", { length: 10 }),
+  startDate: varchar("startDate", { length: 50 }).notNull(),
+  endDate: varchar("endDate", { length: 50 }),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
@@ -297,14 +297,12 @@ export type InsertReliquiasSeason = typeof reliquiasSeasons.$inferInsert;
 export const reliquiasBossProgress = pgTable("reliquiasBossProgress", {
   id: serial("id").primaryKey(),
   seasonId: integer("seasonId").notNull(),
+  bossId: integer("bossId").notNull(),
   bossName: varchar("bossName", { length: 50 }).notNull(),
-  bossOrder: integer("bossOrder").notNull(),
-  guardsRequired: integer("guardsRequired").notNull(),
-  guardsDefeated: integer("guardsDefeated").default(0).notNull(),
-  bossDefeatedCount: integer("bossDefeatedCount").default(0).notNull(),
-  bossMaxDefeats: integer("bossMaxDefeats").default(1).notNull(),
-  isCompleted: boolean("isCompleted").default(false).notNull(),
-  completedAt: timestamp("completedAt"),
+  currentHp: integer("currentHp").default(100).notNull(),
+  maxHp: integer("maxHp").default(100).notNull(),
+  stage: integer("stage").default(1).notNull(),
+  isDefeated: boolean("isDefeated").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -316,17 +314,20 @@ export type InsertReliquiasBossProgress = typeof reliquiasBossProgress.$inferIns
  * Reliquias Member Assignments - member role per boss with guard numbers and performance
  */
 export const reliquiasMemberAssignments = pgTable("reliquiasMemberAssignments", {
-  id: integer("id").primaryKey(),
-  seasonId: integer("seasonId").notNull(),
+  id: serial("id").primaryKey(),
   memberId: integer("memberId").notNull(),
   bossName: varchar("bossName", { length: 50 }).notNull(),
-  attackNumber: integer("attackNumber").default(1).notNull(),
-  role: memberRoleEnum("role").default("guards").notNull(),
+  seasonId: integer("seasonId").notNull(),
+  bossId: integer("bossId").notNull(),
+  assignedAt: varchar("assignedAt", { length: 50 }),
+  unassignedAt: varchar("unassignedAt", { length: 50 }),
+  createdAt: varchar("createdAt", { length: 20 }).notNull(),
+  updatedAt: varchar("updatedAt", { length: 20 }).notNull(),
+  attackNumber: integer("attackNumber").default(1),
+  role: memberRoleEnum("role").default("guards"),
   guard1Number: integer("guard1Number"),
   guard2Number: integer("guard2Number"),
   performance: text("performance"),
-  createdAt: bigint("createdAt", { mode: "number" }).notNull(),
-  updatedAt: bigint("updatedAt", { mode: "number" }).notNull(),
 });
 
 export type ReliquiasMemberAssignment = typeof reliquiasMemberAssignments.$inferSelect;
