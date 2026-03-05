@@ -746,3 +746,68 @@ export async function sendWhatsAppGroupMessage(
     return false;
   }
 }
+
+/**
+ * Enviar imagem para um grupo
+ */
+export async function sendWhatsAppGroupImage(
+  groupId: string,
+  imagePath: string,
+  caption?: string
+): Promise<boolean> {
+  if (!socket || connectionStatus !== "connected") {
+    console.log("[WhatsApp] Não conectado, não é possível enviar imagem");
+    return false;
+  }
+
+  try {
+    // O ID do grupo já vem no formato correto (xxxxx@g.us)
+    const jid = groupId.includes("@") ? groupId : `${groupId}@g.us`;
+    
+    // Construir path completo se for path relativo
+    let fullPath = imagePath;
+    if (imagePath.startsWith('/uploads/')) {
+      fullPath = path.join(process.cwd(), imagePath);
+    }
+    
+    // Verificar se arquivo existe
+    if (!fs.existsSync(fullPath)) {
+      console.error(`[WhatsApp] Arquivo de imagem não encontrado: ${fullPath}`);
+      return false;
+    }
+    
+    console.log(`[WhatsApp] Enviando imagem para grupo ${jid}: ${fullPath}`);
+
+    // Ler arquivo e enviar
+    const imageBuffer = fs.readFileSync(fullPath);
+    
+    await socket.sendMessage(jid, { 
+      image: imageBuffer,
+      caption: caption || undefined
+    });
+
+    // Adicionar ao histórico
+    messageHistory.push({
+      id: Date.now().toString(),
+      phoneNumber: groupId,
+      message: `[IMAGEM] ${imagePath}${caption ? ' - ' + caption : ''}`,
+      status: "sent",
+      timestamp: new Date(),
+    });
+
+    console.log(`[WhatsApp] Imagem enviada com sucesso para grupo ${groupId}`);
+    return true;
+  } catch (error) {
+    console.error("[WhatsApp] Erro ao enviar imagem para grupo:", error);
+    
+    messageHistory.push({
+      id: Date.now().toString(),
+      phoneNumber: groupId,
+      message: `[IMAGEM FALHOU] ${imagePath}`,
+      status: "failed",
+      timestamp: new Date(),
+    });
+    
+    return false;
+  }
+}

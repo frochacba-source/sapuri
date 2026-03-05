@@ -5,6 +5,7 @@ import path from 'path';
 import FormData from 'form-data';
 import { 
   sendWhatsAppGroupMessage, 
+  sendWhatsAppGroupImage,
   getWhatsAppGroups, 
   getWhatsAppStatus 
 } from '../whatsapp-web-client';
@@ -156,7 +157,7 @@ ${account.description}
   }
 }
 
-// Enviar conta para WhatsApp (todos os grupos)
+// Enviar conta para WhatsApp (todos os grupos) - com imagens
 async function sendAccountToWhatsApp(account: Account): Promise<{ sent: number; failed: number }> {
   const status = getWhatsAppStatus();
   
@@ -173,7 +174,7 @@ async function sendAccountToWhatsApp(account: Account): Promise<{ sent: number; 
 📋 *Descrição:*
 ${account.description}
 
-📸 ${account.images.length} imagem(ns) disponíveis
+📸 _Prints enviados abaixo_
 
 💬 Entre em contato para mais informações!`;
 
@@ -184,15 +185,33 @@ ${account.description}
 
     for (const group of groups) {
       try {
-        const success = await sendWhatsAppGroupMessage(group.id, message);
-        if (success) {
-          sent++;
-          console.log(`[WhatsApp] Mensagem enviada para grupo: ${group.name}`);
-        } else {
+        // 1. Enviar mensagem de texto
+        const textSuccess = await sendWhatsAppGroupMessage(group.id, message);
+        if (!textSuccess) {
           failed++;
+          continue;
         }
-        // Delay entre mensagens para evitar flood
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Delay antes de enviar imagens
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // 2. Enviar cada imagem
+        for (const imageUrl of account.images) {
+          const imageSuccess = await sendWhatsAppGroupImage(group.id, imageUrl);
+          if (imageSuccess) {
+            console.log(`[WhatsApp] Imagem enviada para grupo ${group.name}: ${imageUrl}`);
+          } else {
+            console.log(`[WhatsApp] Falha ao enviar imagem para ${group.name}: ${imageUrl}`);
+          }
+          // Delay entre imagens (anti-flood)
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        
+        sent++;
+        console.log(`[WhatsApp] Conta com ${account.images.length} imagem(ns) enviada para grupo: ${group.name}`);
+        
+        // Delay entre grupos
+        await new Promise(resolve => setTimeout(resolve, 3000));
       } catch (error) {
         console.error(`[WhatsApp] Erro ao enviar para grupo ${group.name}:`, error);
         failed++;
@@ -206,7 +225,7 @@ ${account.description}
   }
 }
 
-// Enviar conta para um grupo específico do WhatsApp
+// Enviar conta para um grupo específico do WhatsApp - com imagens
 async function sendAccountToWhatsAppGroup(account: Account, groupId: string): Promise<boolean> {
   const status = getWhatsAppStatus();
   
@@ -223,13 +242,34 @@ async function sendAccountToWhatsAppGroup(account: Account, groupId: string): Pr
 📋 *Descrição:*
 ${account.description}
 
-📸 ${account.images.length} imagem(ns) disponíveis
+📸 _Prints enviados abaixo_
 
 💬 Entre em contato para mais informações!`;
 
   try {
-    const success = await sendWhatsAppGroupMessage(groupId, message);
-    return success;
+    // 1. Enviar mensagem de texto
+    const textSuccess = await sendWhatsAppGroupMessage(groupId, message);
+    if (!textSuccess) {
+      return false;
+    }
+    
+    // Delay antes de enviar imagens
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // 2. Enviar cada imagem
+    for (const imageUrl of account.images) {
+      const imageSuccess = await sendWhatsAppGroupImage(groupId, imageUrl);
+      if (imageSuccess) {
+        console.log(`[WhatsApp] Imagem enviada: ${imageUrl}`);
+      } else {
+        console.log(`[WhatsApp] Falha ao enviar imagem: ${imageUrl}`);
+      }
+      // Delay entre imagens (anti-flood)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
+    console.log(`[WhatsApp] Conta com ${account.images.length} imagem(ns) enviada para grupo: ${groupId}`);
+    return true;
   } catch (error) {
     console.error('[WhatsApp] Erro ao enviar para grupo:', error);
     return false;
