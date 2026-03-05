@@ -22,6 +22,232 @@ import { getDb } from "./db";
 import { gvgStrategies, gotStrategies, GvgStrategy, GotStrategy } from "../drizzle/schema";
 import { like, desc, sql } from "drizzle-orm";
 
+// ============ SISTEMA DE CONTAS POR VALOR ============
+
+// Interface para contas (deve corresponder ao accountScheduler)
+interface Account {
+  id: string;
+  gameName: string;
+  price: number;
+  description: string;
+  images: string[];
+  createdAt: number;
+  sellerName?: string;
+  sellerContact?: string;
+  sellerEmail?: string;
+  sellerNotes?: string;
+}
+
+// Caminho do arquivo de contas
+const ACCOUNTS_FILE = path.join(process.cwd(), 'server/data/contas.json');
+
+/**
+ * Carregar contas do arquivo JSON
+ */
+function loadAccountsFromFile(): Account[] {
+  try {
+    if (fs.existsSync(ACCOUNTS_FILE)) {
+      const data = fs.readFileSync(ACCOUNTS_FILE, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('[WhatsApp Bot] Erro ao carregar contas:', error);
+  }
+  return [];
+}
+
+/**
+ * Mapear valores por extenso para números
+ */
+const valoresPorExtenso: Record<string, number> = {
+  'cem': 100, 'cento': 100,
+  'duzentos': 200, 'duzentas': 200,
+  'trezentos': 300, 'trezentas': 300,
+  'quatrocentos': 400, 'quatrocentas': 400,
+  'quinhentos': 500, 'quinhentas': 500,
+  'seiscentos': 600, 'seiscentas': 600,
+  'setecentos': 700, 'setecentas': 700,
+  'oitocentos': 800, 'oitocentas': 800,
+  'novecentos': 900, 'novecentas': 900,
+  'mil': 1000,
+};
+
+/**
+ * Detectar se a mensagem é uma pergunta sobre valor/preço de conta
+ * Retorna o valor detectado ou null se não for uma pergunta sobre preço
+ */
+function detectPriceQuery(message: string): number | null {
+  const lowerMessage = message.toLowerCase().trim();
+  
+  // Palavras-chave que indicam pergunta sobre conta/valor
+  const keywords = ['conta', 'tem', 'teria', 'valor', 'preço', 'preco', 'quanto', 'reais', 'r$', 'por'];
+  const hasKeyword = keywords.some(kw => lowerMessage.includes(kw));
+  
+  if (!hasKeyword) {
+    return null;
+  }
+  
+  // Padrões para detectar valores
+  // R$ 500, R$500, 500 reais, 500, de 500, por 500
+  const patterns = [
+    /r\$\s*(\d+(?:[.,]\d{1,2})?)/i,                    // R$ 500 ou R$500
+    /(\d+(?:[.,]\d{1,2})?)\s*reais/i,                  // 500 reais
+    /(?:de|por|conta)\s*(\d+(?:[.,]\d{1,2})?)/i,       // de 500, por 500, conta 500
+    /(\d{3,})/,                                          // números com 3+ dígitos (100+)
+  ];
+  
+  for (const pattern of patterns) {
+    const match = lowerMessage.match(pattern);
+    if (match && match[1]) {
+      const value = parseFloat(match[1].replace(',', '.'));
+      if (!isNaN(value) && value >= 50) {
+        return value;
+      }
+    }
+  }
+  
+  // Verificar valores por extenso
+  for (const [palavra, valor] of Object.entries(valoresPorExtenso)) {
+    if (lowerMessage.includes(palavra)) {
+      // Verificar se é combinação tipo "mil e quinhentos"
+      const milMatch = lowerMessage.match(/(\d*)\s*mil\s*(?:e\s*)?(\w+)?/);
+      if (milMatch) {
+        let total = 1000;
+        const multiplier = milMatch[1] ? parseInt(milMatch[1]) : 1;
+        total = total * multiplier;
+        
+        if (milMatch[2]) {
+          const adicional = valoresPorExtenso[milMatch[2]];
+          if (adicional) {
+            total += adicional;
+          }
+        }
+        return total;
+      }
+      return valor;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Buscar contas com valor aproximado (±20%)
+ * Ordenar por proximidade ao valor solicitado
+ * Limitar a 5 contas
+ */
+function findAccountsByPrice(targetPrice: number): Account[] {
+  const accounts = loadAccountsFromFile();
+  
+  if (accounts.length === 0) {
+    return [];
+  }
+  
+  // Calcular faixa de preço (±20%)
+  const minPrice = targetPrice * 0.8;
+  const maxPrice = targetPrice * 1.2;
+  
+  // Filtrar e ordenar por proximidade
+  const filtered = accounts
+    .filter(acc => acc.price >= minPrice && acc.price <= maxPrice)
+    .sort((a, b) => Math.abs(a.price - targetPrice) - Math.abs(b.price - targetPrice))
+    .slice(0, 5);
+  
+  return filtered;
+}
+
+/**
+ * Formatar lista de contas para mensagem WhatsApp
+ */
+function formatAccountsList(accounts: Account[], targetPrice: number): string {
+  if (accounts.length === 0) {
+    return `😔 Não encontrei contas na faixa de R$ ${targetPrice.toLocaleString('pt-BR')}.
+
+💡 *Dicas:*
+• Tente um valor diferente
+• Aguarde novos anúncios
+• Pergunte sobre outras faixas de preço
+
+📢 Anúncios automáticos são enviados regularmente!`;
+  }
+  
+  let message = `💰 *Encontrei ${accounts.length} conta${accounts.length > 1 ? 's' : ''} próxima${accounts.length > 1 ? 's' : ''} a R$ ${targetPrice.toLocaleString('pt-BR')}:*\n\n`;
+  
+  accounts.forEach((acc, index) => {
+    const emoji = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'][index] || `${index + 1}.`;
+    const priceFormatted = acc.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    
+    // Descrição resumida (primeiras 60 caracteres)
+    let descResumida = acc.description || 'Sem descrição';
+    if (descResumida.length > 60) {
+      descResumida = descResumida.substring(0, 57) + '...';
+    }
+    
+    message += `${emoji} *${acc.gameName || 'Conta'}*\n`;
+    message += `💵 *R$ ${priceFormatted}*\n`;
+    message += `📝 ${descResumida}\n\n`;
+  });
+  
+  message += `━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  message += `📢 Para mais detalhes, aguarde os anúncios automáticos!\n`;
+  message += `💬 Interessado? Aguarde o anúncio completo com imagens.`;
+  
+  return message;
+}
+
+/**
+ * Processar pergunta sobre preço de conta
+ * Retorna true se processou, false se não era pergunta sobre preço
+ */
+async function processPriceQuery(
+  text: string,
+  remoteJid: string,
+  socketInstance: WASocket
+): Promise<boolean> {
+  const price = detectPriceQuery(text);
+  
+  if (price === null) {
+    return false;
+  }
+  
+  console.log(`[WhatsApp Bot] Pergunta sobre preço detectada: R$ ${price}`);
+  
+  // Verificar faixas válidas
+  if (price < 50) {
+    await socketInstance.sendMessage(remoteJid, { 
+      text: `❌ Não temos contas abaixo de R$ 50. Tente um valor maior!` 
+    });
+    return true;
+  }
+  
+  if (price > 10000) {
+    await socketInstance.sendMessage(remoteJid, { 
+      text: `❌ Não temos contas acima de R$ 10.000. Tente um valor menor!` 
+    });
+    return true;
+  }
+  
+  // Enviar mensagem de "verificando..."
+  await socketInstance.sendMessage(remoteJid, { 
+    text: `🔍 Vou verificar as contas disponíveis próximas a R$ ${price.toLocaleString('pt-BR')}...` 
+  });
+  
+  // Aguardar 2-3 segundos (parecer mais natural)
+  const delay = 2000 + Math.random() * 1000;
+  await new Promise(resolve => setTimeout(resolve, delay));
+  
+  // Buscar contas
+  const accounts = findAccountsByPrice(price);
+  
+  // Formatar e enviar resposta
+  const response = formatAccountsList(accounts, price);
+  await socketInstance.sendMessage(remoteJid, { text: response });
+  
+  console.log(`[WhatsApp Bot] Resposta sobre preço enviada: ${accounts.length} contas encontradas`);
+  
+  return true;
+}
+
 // Diretório para salvar sessões
 const SESSIONS_DIR = path.join(process.cwd(), "server", "whatsapp-sessions");
 
@@ -793,6 +1019,16 @@ async function handleIncomingMessage(message: any): Promise<void> {
     const sender = message.key.participant || message.key.remoteJid;
 
     console.log(`[WhatsApp Bot] Mensagem recebida de ${isGroup ? "grupo" : "privado"}: ${text.substring(0, 50)}`);
+
+    // NOVO: Verificar se é pergunta sobre preço de conta (antes de comandos)
+    // Processar apenas se não for comando (não começa com /)
+    if (!text.trim().startsWith('/') && socket) {
+      const priceProcessed = await processPriceQuery(text, remoteJid, socket);
+      if (priceProcessed) {
+        console.log(`[WhatsApp Bot] Pergunta sobre preço processada para ${remoteJid}`);
+        return; // Já respondeu, não precisa continuar
+      }
+    }
 
     // Processar comando
     const response = await processCommand(text);
